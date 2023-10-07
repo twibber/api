@@ -1,0 +1,6 @@
+Hello {{.Name}},
+
+Your verification code is: {{.Code}}
+Please use this code to verify your account. It is valid for 10 minutes only.
+
+Thank you for using Twibber.
