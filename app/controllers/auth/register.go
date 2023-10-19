@@ -13,7 +13,7 @@ import (
 )
 
 type RegisterDTO struct {
-	Username string `json:"firstname" validate:"required,max=32"`
+	Username string `json:"username" validate:"required,max=32"`
 	Email    string `json:"email"     validate:"required,email,max=512"`
 	Password string `json:"password"  validate:"required,min=8"`
 	Remember bool   `json:"remember"  validate:""`
@@ -57,7 +57,6 @@ func Register(c *fiber.Ctx) error {
 		Connections: []models.Connection{
 			{
 				Type:     models.Email,
-				ID:       body.Email,
 				Password: hashedPassword,
 			},
 		},
