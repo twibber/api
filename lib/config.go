@@ -10,8 +10,12 @@ import (
 type Configuration struct {
 	// Application
 	Debug  bool   `env:"DEBUG"`
-	Port   string `env:"PORT"`
 	Domain string `env:"DOMAIN"`
+	Port   string `env:"PORT"`
+
+	// URLs
+	BaseURL  string `env:"BASE_URL"`
+	PanelURL string `env:"PANEL_URL"`
 
 	// Database
 	DBHost     string `env:"DB_HOST"`
@@ -36,9 +40,6 @@ type Configuration struct {
 	// OAuth providers
 	GoogleClient string `env:"GOOGLE_CLIENT_ID"`
 	GoogleSecret string `env:"GOOGLE_CLIENT_SECRET"`
-
-	GitHubClient string `env:"GITHUB_CLIENT_ID"`
-	GitHubSecret string `env:"GITHUB_CLIENT_SECRET"`
 
 	// Sentry
 	SentryDSN string `env:"SENTRY_DSN"`
@@ -65,7 +66,7 @@ func LoadConfiguration(config *Configuration) {
 func init() {
 	err := godotenv.Load()
 	if err != nil {
-		logrus.Warn("Error loading .env file")
+		logrus.Warn(".env file not loaded, resorting to environment variables")
 	}
 
 	LoadConfiguration(Config)

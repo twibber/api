@@ -29,15 +29,15 @@ func (l *Logger) LogMode(gormLogger.LogLevel) gormLogger.Interface {
 	return l
 }
 
-func (l *Logger) Info(ctx context.Context, s string, args ...interface{}) {
+func (l *Logger) Info(ctx context.Context, s string, args ...any) {
 	log.WithContext(ctx).Infof(s, args)
 }
 
-func (l *Logger) Warn(ctx context.Context, s string, args ...interface{}) {
+func (l *Logger) Warn(ctx context.Context, s string, args ...any) {
 	log.WithContext(ctx).Warnf(s, args)
 }
 
-func (l *Logger) Error(ctx context.Context, s string, args ...interface{}) {
+func (l *Logger) Error(ctx context.Context, s string, args ...any) {
 	log.WithContext(ctx).Errorf(s, args)
 }
 

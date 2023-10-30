@@ -1,8 +1,10 @@
-package auth
+package email
 
 import (
+	"fmt"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -18,21 +20,22 @@ type LoginDTO struct {
 }
 
 func Login(c *fiber.Ctx) error {
-	var body LoginDTO
-	if err := lib.ParseAndValidate(c, &body); err != nil {
+	var dto LoginDTO
+	if err := lib.ParseAndValidate(c, &dto); err != nil {
 		return err
 	}
 
-	if err := lib.CheckCaptcha(body.Captcha); err != nil {
+	if err := lib.CheckCaptcha(dto.Captcha); err != nil {
 		return err
 	}
 
 	var connection models.Connection
-	if err := lib.DB.Where(models.Connection{Type: models.Email, ID: body.Email}).First(&connection).Error; err != nil {
+	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).First(&connection).Error; err != nil {
 		return err
 	}
 
-	match, err := argon2id.ComparePasswordAndHash(body.Password, connection.Password)
+	log.Debug(fmt.Sprintf("Connection: %+v, %+v", connection.Password, dto.Password))
+	match, err := argon2id.ComparePasswordAndHash(dto.Password, connection.Password)
 	if err != nil {
 		return err
 	}
@@ -44,14 +47,16 @@ func Login(c *fiber.Ctx) error {
 	token := lib.GenerateString(64)
 
 	exp := 24 * time.Hour
-	if body.Remember {
+	if dto.Remember {
 		exp = 2 * 7 * 24 * time.Hour
 	}
 
 	lib.DB.Create(&models.Session{
-		ID:        token,
-		UserID:    connection.UserID,
-		ExpiresAt: time.Now().Add(exp),
+		ID:           token,
+		ConnectionID: connection.ID,
+		ExpiresAt:    time.Now().Add(exp),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	})
 
 	c.Cookie(&fiber.Cookie{

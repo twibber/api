@@ -5,8 +5,10 @@ var BlankSuccess = Response{
 }
 
 type Response struct {
-	Success    bool        `json:"success"`
-	Data       interface{} `json:"data,omitempty"`
+	Success bool `json:"success"`
+	// ObjectName is a pointer to the data just so we're quirky
+	ObjectName string      `json:"object,omitempty"`
+	Data       any         `json:"data,omitempty"`
 	Pagination *Pagination `json:"pagination,omitempty"`
 }
 

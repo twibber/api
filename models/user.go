@@ -1,27 +1,39 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
+// Level represents the access level of a user in the system.
+type Level string
+
+// User levels
+const (
+	Admin   Level = "admin"
+	Support Level = "support"
+	Member  Level = "user"
+)
+
+// User represents the system user with related authentication details and relationships.
 type User struct {
-	ID string `json:"id" gorm:"primaryKey"`
+	ID string `gorm:"primaryKey" json:"id"`
 
 	// Details
-	Username string `json:"username"`
+	Username string `gorm:"size:255;not null" json:"username"`
+
+	Level Level `gorm:"not null;default:user" json:"level"`
 
 	// Auth
-	Email    string `json:"email"`
-	Verified bool   `json:"verified,omitempty"`
-	MFA      string `json:"-"`
+	Email string `gorm:"size:255;unique;not null" json:"email"`
+	MFA   string `json:"-"` // Hidden: Multi-Factor Authentication
 
 	// Account Suspension
-	// this limits the account's actions, this is in place in case a suspicious account needs to be kept on record.
-	Suspended bool `json:"suspended,omitempty"`
+	Suspended bool `gorm:"default:false" json:"suspended,omitempty"`
 
-	// Authentication
-	Connections []Connection `json:"connections,omitempty" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Sessions    []Session    `json:"sessions,omitempty" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	// Relationships
+	Connections []Connection `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"connections,omitempty"`
 
 	// Timestamps
-	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"-"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"-"`
 }

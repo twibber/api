@@ -1,6 +1,6 @@
 package models
 
-var Models = []interface{}{
+var Models = []any{
 	&User{},
 	&Connection{},
 	&Session{},

@@ -12,7 +12,7 @@ import (
 
 var validate = validator.New()
 
-func ParseAndValidate(c *fiber.Ctx, body interface{}) (err error) {
+func ParseAndValidate(c *fiber.Ctx, body any) (err error) {
 	if err = c.BodyParser(&body); err != nil {
 		return err
 	}

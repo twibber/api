@@ -29,62 +29,61 @@ func Configure() *fiber.App {
 		AppName:      "Twibber",
 		// error handler
 		ErrorHandler: lib.ErrorHandler,
-		JSONEncoder: func(v interface{}) ([]byte, error) {
-			// if the type is lib.Response, get the name of the struct in the field Data
-			switch v.(type) {
+		JSONEncoder: func(v any) ([]byte, error) {
+			switch respData := v.(type) {
 			case lib.Response:
-				if v.(lib.Response).Data == nil {
-					return sonic.Marshal(v)
-				}
-
-				// get the name of the struct in Data
-				var name string
-
-				// extract struct if pointer
-				dataValue := reflect.ValueOf(v.(lib.Response).Data)
-				if dataValue.Kind() == reflect.Ptr {
-					dataValue = dataValue.Elem()
-				}
-
-				// extract name from struct
-				if t := dataValue.Type(); t.Kind() == reflect.Slice {
-					name = t.Elem().Name() + "s" // multiple
-				} else {
-					name = t.Name()
-				}
-
-				// simplify, also avoid fuckery
-				if name == "" {
-					name = "data"
-				} else {
-					name = strings.ToLower(name)
-				}
-
-				// marshal the struct into json
-				body, err := sonic.Marshal(v)
+				body, err := sonic.Marshal(respData)
 				if err != nil {
 					return nil, err
 				}
 
-				// unmarshal the json string into a map
-				var result map[string]interface{}
+				var result map[string]any
 				if err := sonic.Unmarshal(body, &result); err != nil {
 					return nil, err
 				}
 
-				// change the key `data` to the name of the struct in Data
+				var name string
+				if respData.ObjectName != "" {
+					name = respData.ObjectName
+				} else {
+					dataValue := reflect.ValueOf(respData.Data)
+					if dataValue.IsValid() { // Check if the dataValue is valid before accessing its type
+						if dataValue.Kind() == reflect.Ptr {
+							dataValue = dataValue.Elem()
+						}
+
+						if t := dataValue.Type(); t.Kind() == reflect.Slice {
+							name = t.Elem().Name() + "s"
+						} else {
+							name = t.Name()
+						}
+
+						if name == "" || name == "s" {
+							name = "data"
+						} else {
+							name = strings.ToLower(name)
+						}
+					} else {
+						name = "data"
+					}
+				}
+
 				if data, ok := result["data"]; ok {
-					result[name] = data
+					dataValue := reflect.ValueOf(data)
+					if dataValue.Kind() == reflect.Slice && dataValue.Len() == 0 {
+						result[name] = []any{}
+					} else {
+						result[name] = data
+					}
 					delete(result, "data")
 				}
 
-				// marshal the struct back into json
 				return sonic.Marshal(result)
 			}
 
 			return sonic.Marshal(v)
 		},
-		JSONDecoder: func(data []byte, v interface{}) error {
+		JSONDecoder: func(data []byte, v any) error {
 			return sonic.Unmarshal(data, v)
 		},
 	})
@@ -110,6 +109,16 @@ func Configure() *fiber.App {
 		AllowCredentials: true,
 	}))
 
+	// debug request logger
+	app.Use(func(c *fiber.Ctx) error {
+		log.WithFields(log.Fields{
+			"method": c.Method(),
+			"path":   c.Path(),
+			"ip":     c.IP(),
+		}).Debug("request")
+		return c.Next()
+	})
+
 	// status route
 	statusCache := app.Use(cache.New())
 
@@ -123,7 +132,7 @@ func Configure() *fiber.App {
 			"success": true,
 			"status": fiber.Map{
 				"title":  app.Config().AppName,
-				"author": "Petar Markov <petar@twibber.xyz>",
+				"author": "Petar Markov <petar@nolag.host>",
 				"health": "healthy",
 				"mode":   mode,
 				"time":   time.Now().Unix(),
@@ -137,15 +146,17 @@ func Configure() *fiber.App {
 	routes.Account(app.Group("/user", mw.Auth(false)))
 
 	// Debugging routes
-	/*for _, route := range app.GetRoutes() {
-		log.WithFields(log.Fields{
-			"name":   route.Name,
-			"path":   route.Path,
-			"params": route.Params,
-			"handlers": route.Handlers,
-			"method": route.Method,
-		}).Debug(route.Path)
-	}*/
+	/*
+		for _, route := range app.GetRoutes() {
+			log.WithFields(log.Fields{
+				"name":     route.Name,
+				"path":     route.Path,
+				"params":   route.Params,
+				"handlers": route.Handlers,
+				"method":   route.Method,
+			}).Debug(route.Path)
+		}
+	*/
 
 	return app
 }

@@ -1,4 +1,4 @@
-package auth
+package email
 
 import (
 	"github.com/gofiber/fiber/v2"
@@ -12,17 +12,17 @@ type VerifyDTO struct {
 }
 
 func Verify(c *fiber.Ctx) error {
-	var body VerifyDTO
-	if err := lib.ParseAndValidate(c, &body); err != nil {
+	var dto VerifyDTO
+	if err := lib.ParseAndValidate(c, &dto); err != nil {
 		return err
 	}
 
-	var user models.User
-	if err := lib.DB.Where(models.User{Email: body.Email}).First(&user).Error; err != nil {
+	var connection models.Connection
+	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).First(&connection).Error; err != nil {
 		return err
 	}
 
-	if !lib.ValidateTOTP(user.MFA, body.Code, lib.EmailVerification) {
+	if !lib.ValidateTOTP(connection.TOTPVerify, dto.Code, lib.EmailVerification) {
 		return lib.NewError(fiber.StatusBadRequest, "Invalid code provided.", &lib.ErrorDetails{
 			Fields: []lib.ErrorField{
 				{
@@ -32,10 +32,10 @@ func Verify(c *fiber.Ctx) error {
 			},
 		})
 	} else {
-		user.Verified = true
+		connection.Verified = true
 	}
 
-	if err := lib.DB.Updates(&user).Error; err != nil {
+	if err := lib.DB.Updates(&connection).Error; err != nil {
 		return err
 	}
 

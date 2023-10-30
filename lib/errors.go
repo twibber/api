@@ -65,6 +65,7 @@ func (e Error) Error() string {
 
 type ErrorDetails struct {
 	Fields []ErrorField `json:"fields,omitempty"`
+	Debug  any          `json:"debug,omitempty"`
 }
 
 type ErrorField struct {
@@ -94,51 +95,56 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 		e := err.(Error)
 
 		return c.Status(e.Status).JSON(Response{
-			Success: false,
-			Data:    e,
+			Success:    false,
+			ObjectName: "error",
+			Data:       e,
 		})
 	case *fiber.Error:
 		fiberErr := err.(*fiber.Error)
 		e := NewError(fiberErr.Code, fiberErr.Message, nil)
 
 		return c.Status(e.Status).JSON(Response{
-			Success: false,
-			Data:    e,
+			Success:    false,
+			ObjectName: "error",
+			Data:       e,
 		})
 	case decoder.SyntaxError:
 		e := NewError(fiber.StatusUnprocessableEntity, "Invalid JSON was provided in the request body.", nil)
 
 		return c.Status(e.Status).JSON(Response{
-			Success: false,
-			Data:    e,
+			Success:    false,
+			ObjectName: "error",
+			Data:       e,
 		})
 	default:
 		switch err {
 		case gorm.ErrRecordNotFound, gorm.ErrEmptySlice:
 			var e Error
 			switch c.Route().Path {
-			case "/auth/register", "/auth/login":
+			case "/auth/email/register", "/auth/email/login":
 				e = ErrInvalidCredentials
 			default:
 				e = ErrNotFound
 			}
 
 			return c.Status(e.Status).JSON(Response{
-				Success: false,
-				Data:    e,
+				Success:    false,
+				ObjectName: "error",
+				Data:       e,
 			})
 		default:
 			// this is an unhandled error
 			// only give true error while debugging, to avoid leaking sensitive information
 			e := NewError(fiber.StatusInternalServerError, "An internal server error occurred while processing your request", nil)
 			if Config.Debug {
-				log.WithError(err).WithField("errType", reflect.TypeOf(err).Name()).Error("An unhandled error occurred.")
-				e = NewError(fiber.StatusInternalServerError, err.Error(), nil)
+				log.WithError(err).WithField("errType", reflect.TypeOf(err).String()).Error("An unhandled error occurred.")
+				e = NewError(fiber.StatusInternalServerError, fmt.Sprintf("%s: %s", reflect.TypeOf(err).String(), err.Error()), nil)
 			}
 
 			return c.Status(e.Status).JSON(Response{
-				Success: false,
-				Data:    e,
+				Success:    false,
+				ObjectName: "error",
+				Data:       e,
 			})
 		}
 	}

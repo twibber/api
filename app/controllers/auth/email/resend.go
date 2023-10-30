@@ -1,4 +1,4 @@
-package auth
+package email
 
 import (
 	"github.com/gofiber/fiber/v2"
@@ -15,28 +15,28 @@ type ResendDTO struct {
 }
 
 func ResendCode(c *fiber.Ctx) error {
-	var body ResendDTO
-	if err := lib.ParseAndValidate(c, &body); err != nil {
+	var dto ResendDTO
+	if err := lib.ParseAndValidate(c, &dto); err != nil {
 		return err
 	}
 
 	code := strings.Split(utils.UUIDv4(), "-")[0]
 
-	var user models.User
-	if err := lib.DB.Model(models.User{}).Where(models.User{Email: body.Email}).First(&user).Error; err != nil {
+	var connection models.Connection
+	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).Preload("User").First(&connection).Error; err != nil {
 		return err
 	}
 
-	if user.Email == "" {
+	if dto.Email == "" {
 		return lib.NewError(fiber.StatusNotFound, "No user found with that email address.", nil, "NOT_FOUND")
 	}
 
-	if user.Verified {
+	if connection.Verified {
 		return lib.NewError(fiber.StatusForbidden, "You have already verified your email.", nil, "ALREADY_VERIFIED")
 	}
 
 	// create verification code
-	code, err := lib.GenerateTOTP(user.MFA, lib.EmailVerification)
+	code, err := lib.GenerateTOTP(connection.TOTPVerify, lib.EmailVerification)
 	if err != nil {
 		return err
 	}
@@ -45,8 +45,8 @@ func ResendCode(c *fiber.Ctx) error {
 	go func() {
 		err := mailer.VerifyDTO{
 			Defaults: mailer.Defaults{
-				Email: body.Email,
-				Name:  user.Username,
+				Email: dto.Email,
+				Name:  connection.User.Username,
 			},
 			Code: code,
 		}.Send()

@@ -1,13 +1,18 @@
-package auth
+package email
 
 import (
+	"fmt"
 	"github.com/alexedwards/argon2id"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
-	log "github.com/sirupsen/logrus"
+
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/mailer"
 	"github.com/twibber/api/models"
+
+	log "github.com/sirupsen/logrus"
+
 	"net/http"
 	"time"
 )
@@ -21,17 +26,17 @@ type RegisterDTO struct {
 }
 
 func Register(c *fiber.Ctx) error {
-	var body RegisterDTO
-	if err := lib.ParseAndValidate(c, &body); err != nil {
+	var dto RegisterDTO
+	if err := lib.ParseAndValidate(c, &dto); err != nil {
 		return err
 	}
 
-	if err := lib.CheckCaptcha(body.Captcha); err != nil {
+	if err := lib.CheckCaptcha(dto.Captcha); err != nil {
 		return err
 	}
 
 	var count int64
-	if err := lib.DB.Model(models.User{}).Where(models.User{Email: body.Email}).Count(&count).Error; err != nil {
+	if err := lib.DB.Model(models.User{}).Where(models.User{Email: dto.Email}).Count(&count).Error; err != nil {
 		return err
 	}
 
@@ -39,7 +44,7 @@ func Register(c *fiber.Ctx) error {
 		return lib.ErrEmailExists
 	}
 
-	hashedPassword, err := argon2id.CreateHash(body.Password, argon2id.DefaultParams)
+	hashedPassword, err := argon2id.CreateHash(dto.Password, argon2id.DefaultParams)
 	if err != nil {
 		return err
 	}
@@ -49,17 +54,10 @@ func Register(c *fiber.Ctx) error {
 
 	user := models.User{
 		ID:        utils.UUIDv4(),
-		Username:  body.Username,
-		Email:     body.Email,
-		Verified:  false,
+		Username:  dto.Username,
+		Email:     dto.Email,
 		MFA:       secret,
 		Suspended: false,
-		Connections: []models.Connection{
-			{
-				Type:     models.Email,
-				Password: hashedPassword,
-			},
-		},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -68,14 +66,26 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	exp := 24 * time.Hour
-	if body.Remember {
+	if dto.Remember {
 		exp = 2 * 7 * 24 * time.Hour
 	}
 
-	if err := lib.DB.Create(&models.Session{
-		ID:        token,
+	log.Debug(fmt.Sprintf("Password: %s", hashedPassword))
+	if err := lib.DB.Create(&models.Connection{
+		ID:        models.Email.WithID(dto.Email),
 		UserID:    user.ID,
-		ExpiresAt: time.Now().Add(exp),
+		Password:  hashedPassword,
+		Verified:  true,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Sessions: []models.Session{
+			{
+				ID:        token,
+				ExpiresAt: time.Now().Add(exp),
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
 	}).Error; err != nil {
 		return err
 	}

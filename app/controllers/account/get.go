@@ -7,10 +7,11 @@ import (
 )
 
 func GetAccount(c *fiber.Ctx) error {
-	user := c.Locals("user").(models.User)
+	user := c.Locals("session").(models.Session)
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
-		Success: true,
-		Data:    user,
+		Success:    true,
+		ObjectName: "user",
+		Data:       user,
 	})
 }

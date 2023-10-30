@@ -1,10 +1,13 @@
 package mw
 
 import (
+	"errors"
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
 )
@@ -15,7 +18,7 @@ func Auth(verify bool) fiber.Handler {
 		authCookie := c.Cookies("Authorization")
 
 		if authHeader == "" && authCookie == "" {
-			log.Info("no auth header or cookie")
+			log.Debug("No auth header or cookie")
 			return lib.ErrUnauthorised
 		}
 
@@ -24,7 +27,7 @@ func Auth(verify bool) fiber.Handler {
 		if authHeader != "" {
 			authParsed := strings.Split(authHeader, " ")
 			if len(authParsed) < 2 {
-				log.Info("invalid auth header")
+				log.Debug("Invalid auth header")
 				return lib.ErrUnauthorised
 			}
 
@@ -33,23 +36,40 @@ func Auth(verify bool) fiber.Handler {
 			if authCookie != "" {
 				authToken = authCookie
 			} else {
-				log.Info("2. no auth header or cookie")
+				log.Debug("No auth header or cookie")
 				return lib.ErrUnauthorised
 			}
 		}
 
-		var connection models.Connection
-		if err := lib.DB.Where(models.Connection{ID: authToken}).Preload("User").First(&connection).Error; err != nil {
-			return err
+		var session models.Session
+		if err := lib.DB.Where(models.Session{ID: authToken}).Preload("Connection").Preload("Connection.User").First(&session).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Debug("Session not found")
+				return lib.ErrUnauthorised
+			} else {
+				return err
+			}
+		}
+
+		if session.ExpiresAt.Before(time.Now()) {
+			return lib.ErrUnauthorised
 		}
 
 		// check if user is verified if the action requires a verified user
-		if !verify || connection.User.Verified {
-			c.Locals("user", connection.User)
-			c.Locals("userID", connection.UserID)
+		if !verify || session.Connection.Verified {
+			c.Locals("session", session)
 			return c.Next()
 		} else {
-			return lib.NewError(fiber.StatusForbidden, "You must verify your email before performing this action.", nil, "UNVERIFIED")
+			return lib.NewError(fiber.StatusForbidden, "You must verify your email address before performing this action.", nil, "UNVERIFIED")
 		}
 	}
+}
+
+func AdminCheck(c *fiber.Ctx) error {
+	session := c.Locals("session").(models.Session)
+	if session.Connection.User.Level != models.Admin && lib.Config.Debug == false {
+		return lib.ErrForbidden
+	}
+
+	return c.Next()
 }
