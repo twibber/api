@@ -75,7 +75,7 @@ func Register(c *fiber.Ctx) error {
 		ID:        models.Email.WithID(dto.Email),
 		UserID:    user.ID,
 		Password:  hashedPassword,
-		Verified:  true,
+		Verified:  false,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Sessions: []models.Session{

@@ -116,6 +116,7 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 			ObjectName: "error",
 			Data:       e,
 		})
+	// here we handle predefined errors
 	default:
 		switch err {
 		case gorm.ErrRecordNotFound, gorm.ErrEmptySlice:
