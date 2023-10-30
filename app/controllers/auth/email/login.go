@@ -1,10 +1,8 @@
 package email
 
 import (
-	"fmt"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -33,8 +31,7 @@ func Login(c *fiber.Ctx) error {
 	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).First(&connection).Error; err != nil {
 		return err
 	}
-
-	log.Debug(fmt.Sprintf("Connection: %+v, %+v", connection.Password, dto.Password))
+	
 	match, err := argon2id.ComparePasswordAndHash(dto.Password, connection.Password)
 	if err != nil {
 		return err

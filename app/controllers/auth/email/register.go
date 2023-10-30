@@ -1,7 +1,6 @@
 package email
 
 import (
-	"fmt"
 	"github.com/alexedwards/argon2id"
 
 	"github.com/gofiber/fiber/v2"
@@ -70,7 +69,6 @@ func Register(c *fiber.Ctx) error {
 		exp = 2 * 7 * 24 * time.Hour
 	}
 
-	log.Debug(fmt.Sprintf("Password: %s", hashedPassword))
 	if err := lib.DB.Create(&models.Connection{
 		ID:        models.Email.WithID(dto.Email),
 		UserID:    user.ID,
