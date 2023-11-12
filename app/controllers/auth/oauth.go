@@ -22,7 +22,7 @@ var (
 		"google": {
 			ClientID:     lib.Config.GoogleClient,
 			ClientSecret: lib.Config.GoogleSecret,
-			RedirectURL:  fmt.Sprintf("%s/auth/oauth/google/callback", lib.Config.BaseURL),
+			RedirectURL:  fmt.Sprintf("%s/auth/oauth/google/callback", lib.Config.APIURL),
 			Scopes:       []string{"profile", "email"},
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  "https://accounts.google.com/o/oauth2/auth",
@@ -173,7 +173,7 @@ func OAuthCallback(c *fiber.Ctx) error {
 		SameSite: "lax",
 	})
 
-	return c.Redirect(fmt.Sprintf("%s/servers", lib.Config.PanelURL))
+	return c.Redirect(fmt.Sprintf("%s/", lib.Config.PublicURL))
 }
 
 type GoogleOAuth struct {

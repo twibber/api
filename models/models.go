@@ -4,4 +4,6 @@ var Models = []any{
 	&User{},
 	&Connection{},
 	&Session{},
+	&Post{},
+	&Like{},
 }

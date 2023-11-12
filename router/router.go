@@ -2,11 +2,9 @@ package router
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
-	"github.com/bytedance/sonic"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,63 +27,6 @@ func Configure() *fiber.App {
 		AppName:      "Twibber",
 		// error handler
 		ErrorHandler: lib.ErrorHandler,
-		JSONEncoder: func(v any) ([]byte, error) {
-			switch respData := v.(type) {
-			case lib.Response:
-				body, err := sonic.Marshal(respData)
-				if err != nil {
-					return nil, err
-				}
-
-				var result map[string]any
-				if err := sonic.Unmarshal(body, &result); err != nil {
-					return nil, err
-				}
-
-				var name string
-				if respData.ObjectName != "" {
-					name = respData.ObjectName
-				} else {
-					dataValue := reflect.ValueOf(respData.Data)
-					if dataValue.IsValid() { // Check if the dataValue is valid before accessing its type
-						if dataValue.Kind() == reflect.Ptr {
-							dataValue = dataValue.Elem()
-						}
-
-						if t := dataValue.Type(); t.Kind() == reflect.Slice {
-							name = t.Elem().Name() + "s"
-						} else {
-							name = t.Name()
-						}
-
-						if name == "" || name == "s" {
-							name = "data"
-						} else {
-							name = strings.ToLower(name)
-						}
-					} else {
-						name = "data"
-					}
-				}
-
-				if data, ok := result["data"]; ok {
-					dataValue := reflect.ValueOf(data)
-					if dataValue.Kind() == reflect.Slice && dataValue.Len() == 0 {
-						result[name] = []any{}
-					} else {
-						result[name] = data
-					}
-					delete(result, "data")
-				}
-
-				return sonic.Marshal(result)
-			}
-
-			return sonic.Marshal(v)
-		},
-		JSONDecoder: func(data []byte, v any) error {
-			return sonic.Unmarshal(data, v)
-		},
 	})
 
 	// log a successful start

@@ -7,6 +7,7 @@ type Type string
 const (
 	Email  Type = "email"
 	Google Type = "google"
+	GitHub Type = "github"
 )
 
 func (t Type) WithID(id string) string {

@@ -4,24 +4,15 @@ import (
 	"time"
 )
 
-// Level represents the access level of a user in the system.
-type Level string
-
-// User levels
-const (
-	Admin   Level = "admin"
-	Support Level = "support"
-	Member  Level = "user"
-)
-
 // User represents the system user with related authentication details and relationships.
 type User struct {
 	ID string `gorm:"primaryKey" json:"id"`
 
 	// Details
-	Username string `gorm:"size:255;not null" json:"username"`
+	Username    string `gorm:"size:255;not null" json:"username"`
+	DisplayName string `gorm:"size:255;not null" json:"display_name"`
 
-	Level Level `gorm:"not null;default:user" json:"level"`
+	Admin bool `gorm:"not null;default:false" json:"admin,omitempty"`
 
 	// Auth
 	Email string `gorm:"size:255;unique;not null" json:"email"`
@@ -32,6 +23,8 @@ type User struct {
 
 	// Relationships
 	Connections []Connection `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"connections,omitempty"`
+	Posts       []Post       `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"posts,omitempty"`
+	Likes       []Like       `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"likes,omitempty"`
 
 	// Timestamps
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"-"`

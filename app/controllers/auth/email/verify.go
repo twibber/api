@@ -7,18 +7,19 @@ import (
 )
 
 type VerifyDTO struct {
-	Email string `json:"email" validate:"required,email,max=512"`
-	Code  string `json:"code" validate:"required"`
+	Code string `json:"code" validate:"required"`
 }
 
 func Verify(c *fiber.Ctx) error {
+	var session = c.Locals("session").(models.Session)
+
 	var dto VerifyDTO
 	if err := lib.ParseAndValidate(c, &dto); err != nil {
 		return err
 	}
 
 	var connection models.Connection
-	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).First(&connection).Error; err != nil {
+	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(session.Connection.User.Email)}).First(&connection).Error; err != nil {
 		return err
 	}
 

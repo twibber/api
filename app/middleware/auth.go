@@ -1,11 +1,10 @@
-package mw
+package middleware
 
 import (
 	"errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/twibber/api/lib"
@@ -19,6 +18,8 @@ func Auth(verify bool) fiber.Handler {
 
 		if authHeader == "" && authCookie == "" {
 			log.Debug("No auth header or cookie")
+
+			lib.ClearAuth(c)
 			return lib.ErrUnauthorised
 		}
 
@@ -28,6 +29,8 @@ func Auth(verify bool) fiber.Handler {
 			authParsed := strings.Split(authHeader, " ")
 			if len(authParsed) < 2 {
 				log.Debug("Invalid auth header")
+
+				lib.ClearAuth(c)
 				return lib.ErrUnauthorised
 			}
 
@@ -37,6 +40,8 @@ func Auth(verify bool) fiber.Handler {
 				authToken = authCookie
 			} else {
 				log.Debug("No auth header or cookie")
+
+				lib.ClearAuth(c)
 				return lib.ErrUnauthorised
 			}
 		}
@@ -45,14 +50,12 @@ func Auth(verify bool) fiber.Handler {
 		if err := lib.DB.Where(models.Session{ID: authToken}).Preload("Connection").Preload("Connection.User").First(&session).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				log.Debug("Session not found")
+
+				lib.ClearAuth(c)
 				return lib.ErrUnauthorised
 			} else {
 				return err
 			}
-		}
-
-		if session.ExpiresAt.Before(time.Now()) {
-			return lib.ErrUnauthorised
 		}
 
 		// check if user is verified if the action requires a verified user
@@ -67,7 +70,7 @@ func Auth(verify bool) fiber.Handler {
 
 func AdminCheck(c *fiber.Ctx) error {
 	session := c.Locals("session").(models.Session)
-	if session.Connection.User.Level != models.Admin && lib.Config.Debug == false {
+	if !session.Connection.User.Admin && lib.Config.Debug == false {
 		return lib.ErrForbidden
 	}
 

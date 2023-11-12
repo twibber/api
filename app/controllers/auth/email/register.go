@@ -20,7 +20,6 @@ type RegisterDTO struct {
 	Username string `json:"username" validate:"required,max=32"`
 	Email    string `json:"email"     validate:"required,email,max=512"`
 	Password string `json:"password"  validate:"required,min=8"`
-	Remember bool   `json:"remember"  validate:""`
 	Captcha  string `json:"captcha"   validate:""`
 }
 
@@ -48,28 +47,39 @@ func Register(c *fiber.Ctx) error {
 		return err
 	}
 
-	secret := lib.GenerateString(32)
 	token := lib.GenerateString(64)
 
-	user := models.User{
-		ID:        utils.UUIDv4(),
-		Username:  dto.Username,
-		Email:     dto.Email,
-		MFA:       secret,
-		Suspended: false,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+	totpCode, err := lib.GenerateSecureRandomBase32(32)
+	if err != nil {
+		return err
 	}
-	if err := lib.DB.Create(&user).Error; err != nil {
+
+	code, err := lib.GenerateTOTP(totpCode, lib.EmailVerification)
+	if err != nil {
+		return err
+	}
+
+	tx := lib.DB.Begin()
+
+	// @todo: document a way of checking if the username already exists
+	user := models.User{
+		ID:          utils.UUIDv4(),
+		Username:    dto.Username,
+		DisplayName: dto.Username,
+		Email:       dto.Email,
+		MFA:         totpCode,
+		Suspended:   false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if err := tx.Create(&user).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	exp := 24 * time.Hour
-	if dto.Remember {
-		exp = 2 * 7 * 24 * time.Hour
-	}
 
-	if err := lib.DB.Create(&models.Connection{
+	if err := tx.Create(&models.Connection{
 		ID:        models.Email.WithID(dto.Email),
 		UserID:    user.ID,
 		Password:  hashedPassword,
@@ -85,14 +95,11 @@ func Register(c *fiber.Ctx) error {
 			},
 		},
 	}).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	// create verification code
-	code, err := lib.GenerateTOTP(secret, lib.EmailVerification)
-	if err != nil {
-		return err
-	}
+	tx.Commit()
 
 	// concurrently send verification email to user
 	go func() {
@@ -118,5 +125,5 @@ func Register(c *fiber.Ctx) error {
 		SameSite: "lax",
 	})
 
-	return c.Status(http.StatusNoContent).JSON(lib.BlankSuccess)
+	return c.Status(http.StatusOK).JSON(lib.BlankSuccess)
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
 )
@@ -51,12 +52,36 @@ func GenerateString(length int) string {
 	return string(result)
 }
 
-// ComputeTOTP computes the TOTP value for a given secret and time.
-func ComputeTOTP(secret string, timestamp int64) string {
+// GenerateSecureRandomBase32 generates a cryptographically secure random Base32 string of length n.
+// It returns the generated string or an error if there was one.
+func GenerateSecureRandomBase32(n int) (string, error) {
+	if n <= 0 {
+		return "", fmt.Errorf("desired length should be greater than 0")
+	}
+
+	// Calculate the byte length necessary for the desired Base32 string length.
+	// Base32 encoding requires 8 characters for every 5 bytes.
+	byteLength := (n*5 + 7) / 8
+
+	randomBytes := make([]byte, byteLength)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return "", fmt.Errorf("error generating random bytes: %v", err)
+	}
+
+	encodedString := base32.StdEncoding.EncodeToString(randomBytes)
+
+	// Since the encoded string might be longer than the desired length due to padding,
+	// it’s trimmed to the specified length.
+	return encodedString[:n], nil
+}
+
+// ComputeTOTP computes the TOTP value for a given secret and time, and returns an error if any.
+func ComputeTOTP(secret string, timestamp int64) (string, error) {
 	key, err := base32.StdEncoding.DecodeString(strings.ToUpper(secret))
 	if err != nil {
-		fmt.Println("Error decoding secret:", err)
-		return ""
+		log.Error("Error decoding secret: ", err)
+		return "", err
 	}
 
 	t := make([]byte, 8)
@@ -72,7 +97,7 @@ func ComputeTOTP(secret string, timestamp int64) string {
 	fullCode := binary.BigEndian.Uint32(code) & 0x7fffffff
 	strCode := fmt.Sprintf("%06d", fullCode%1000000)
 
-	return strCode
+	return strCode, nil
 }
 
 // GenerateTOTP provides a TOTP code for the current time and desired type (MFA or Email Verification).
@@ -80,13 +105,14 @@ func GenerateTOTP(secret string, stepType StepDurationType) (string, error) {
 	if stepType < 0 || int(stepType) >= len(stepDurations) {
 		return "", errors.New("invalid stepType provided")
 	}
-	return ComputeTOTP(secret, time.Now().Unix()/stepDurations[stepType]), nil
+	return ComputeTOTP(secret, time.Now().Unix()/stepDurations[stepType])
 }
 
 // ValidateTOTP verifies if the provided code matches the expected TOTP value for the given secret and duration type.
 func ValidateTOTP(secret, code string, stepType StepDurationType) bool {
 	expectedCode, err := GenerateTOTP(secret, stepType)
 	if err != nil {
+		log.Error("Error generating TOTP: ", err)
 		return false
 	}
 	return subtleCompare(code, expectedCode)

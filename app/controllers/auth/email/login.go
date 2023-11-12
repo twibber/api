@@ -1,8 +1,10 @@
 package email
 
 import (
+	"fmt"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -13,7 +15,6 @@ import (
 type LoginDTO struct {
 	Email    string `json:"email"     validate:"required,email,max=512"`
 	Password string `json:"password"  validate:"required,min=8"`
-	Remember bool   `json:"remember"  validate:""`
 	Captcha  string `json:"captcha"   validate:""`
 }
 
@@ -27,34 +28,42 @@ func Login(c *fiber.Ctx) error {
 		return err
 	}
 
+	tx := lib.DB.Begin()
+
 	var connection models.Connection
-	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).First(&connection).Error; err != nil {
+	if err := tx.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).First(&connection).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
-	
+
+	log.Debug(fmt.Sprintf("Connection: %+v, %+v", connection.Password, dto.Password))
 	match, err := argon2id.ComparePasswordAndHash(dto.Password, connection.Password)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	if !match {
+		tx.Rollback()
 		return lib.ErrInvalidCredentials
 	}
 
 	token := lib.GenerateString(64)
 
 	exp := 24 * time.Hour
-	if dto.Remember {
-		exp = 2 * 7 * 24 * time.Hour
-	}
 
-	lib.DB.Create(&models.Session{
+	if err := tx.Create(&models.Session{
 		ID:           token,
 		ConnectionID: connection.ID,
 		ExpiresAt:    time.Now().Add(exp),
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
-	})
+	}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
 
 	c.Cookie(&fiber.Cookie{
 		Name:     "Authorization",
@@ -66,5 +75,5 @@ func Login(c *fiber.Ctx) error {
 		SameSite: "lax",
 	})
 
-	return c.Status(http.StatusNoContent).JSON(lib.BlankSuccess)
+	return c.Status(http.StatusOK).JSON(lib.BlankSuccess)
 }

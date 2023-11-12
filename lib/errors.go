@@ -95,28 +95,24 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 		e := err.(Error)
 
 		return c.Status(e.Status).JSON(Response{
-			Success:    false,
-			ObjectName: "error",
-			Data:       e,
+			Success: false,
+			Data:    e,
 		})
 	case *fiber.Error:
 		fiberErr := err.(*fiber.Error)
 		e := NewError(fiberErr.Code, fiberErr.Message, nil)
 
 		return c.Status(e.Status).JSON(Response{
-			Success:    false,
-			ObjectName: "error",
-			Data:       e,
+			Success: false,
+			Data:    e,
 		})
 	case decoder.SyntaxError:
 		e := NewError(fiber.StatusUnprocessableEntity, "Invalid JSON was provided in the request body.", nil)
 
 		return c.Status(e.Status).JSON(Response{
-			Success:    false,
-			ObjectName: "error",
-			Data:       e,
+			Success: false,
+			Data:    e,
 		})
-	// here we handle predefined errors
 	default:
 		switch err {
 		case gorm.ErrRecordNotFound, gorm.ErrEmptySlice:
@@ -129,9 +125,8 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 			}
 
 			return c.Status(e.Status).JSON(Response{
-				Success:    false,
-				ObjectName: "error",
-				Data:       e,
+				Success: false,
+				Data:    e,
 			})
 		default:
 			// this is an unhandled error
@@ -143,9 +138,8 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 			}
 
 			return c.Status(e.Status).JSON(Response{
-				Success:    false,
-				ObjectName: "error",
-				Data:       e,
+				Success: false,
+				Data:    e,
 			})
 		}
 	}

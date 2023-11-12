@@ -9,13 +9,18 @@ import (
 
 type Configuration struct {
 	// Application
-	Debug  bool   `env:"DEBUG"`
-	Domain string `env:"DOMAIN"`
-	Port   string `env:"PORT"`
+	Debug bool   `env:"DEBUG"`
+	Port  string `env:"PORT"`
 
 	// URLs
-	BaseURL  string `env:"BASE_URL"`
-	PanelURL string `env:"PANEL_URL"`
+	Domain    string `env:"DOMAIN"`
+	APIURL    string `env:"API_URL"`
+	PublicURL string `env:"PUBLIC_URL"`
+
+	// Nodes
+	PterodactylURL          string `env:"PTERODACTYL_URL"`
+	PterodactylAdminAPIKey  string `env:"PTERODACTYL_ADMIN_API_KEY"`
+	PterodactylClientAPIKey string `env:"PTERODACTYL_CLIENT_API_KEY"`
 
 	// Database
 	DBHost     string `env:"DB_HOST"`
@@ -40,6 +45,10 @@ type Configuration struct {
 	// OAuth providers
 	GoogleClient string `env:"GOOGLE_CLIENT_ID"`
 	GoogleSecret string `env:"GOOGLE_CLIENT_SECRET"`
+
+	DiscordClient  string `env:"DISCORD_CLIENT_ID"`
+	DiscordSecret  string `env:"DISCORD_CLIENT_SECRET"`
+	DiscordWebhook string `env:"DISCORD_WEBHOOK_URL"`
 
 	// Sentry
 	SentryDSN string `env:"SENTRY_DSN"`
