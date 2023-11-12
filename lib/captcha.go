@@ -9,56 +9,60 @@ import (
 
 const siteVerifyURL = "https://www.google.com/recaptcha/api/siteverify"
 
+// SiteVerifyResponse struct maps the JSON response from reCAPTCHA verification.
 type SiteVerifyResponse struct {
-	Success     bool      `json:"success"`
-	Score       float64   `json:"score"`
-	Action      string    `json:"action"`
-	ChallengeTS time.Time `json:"challenge_ts"`
-	Hostname    string    `json:"hostname"`
-	ErrorCodes  []string  `json:"error-codes"`
+	Success     bool      `json:"success"`      // Indicates if the captcha was successful
+	Score       float64   `json:"score"`        // Score for the captcha action
+	Action      string    `json:"action"`       // Action associated with the captcha
+	ChallengeTS time.Time `json:"challenge_ts"` // Timestamp of the captcha challenge
+	Hostname    string    `json:"hostname"`     // Hostname of the site where the captcha was solved
+	ErrorCodes  []string  `json:"error-codes"`  // Any error codes returned by the verification
 }
 
+// CheckCaptcha verifies the reCAPTCHA response token.
 func CheckCaptcha(captcha string) error {
-	// don't need to verify actions under a dev env
+	// Skip verification in development environment.
 	if Config.Debug {
 		return nil
 	}
 
+	// Return error if captcha token is empty.
 	if captcha == "" {
 		return ErrInvalidCaptcha
 	}
 
+	// Prepare a POST request to the Google reCAPTCHA API.
 	req, err := http.NewRequest(http.MethodPost, siteVerifyURL, nil)
 	if err != nil {
 		return err
 	}
 
-	// Add necessary request parameters.
+	// Set the necessary query parameters for the request.
 	q := req.URL.Query()
 	q.Add("secret", Config.CaptchaSecret)
 	q.Add("response", captcha)
 	req.URL.RawQuery = q.Encode()
 
-	// Make request
+	// Execute the HTTP request.
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
 
-	// idek
+	// Ensure response body is closed after function execution.
 	defer func(Body io.ReadCloser) {
 		if e := Body.Close(); e != nil {
-			panic(e)
+			panic(e) // Panic if closing the response body fails, might replace with logging
 		}
 	}(resp.Body)
 
-	// Decode response.
+	// Parse the JSON response from the reCAPTCHA server.
 	var body SiteVerifyResponse
 	if err = json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return err
 	}
 
-	// Check recaptcha verification success.
+	// Validate if reCAPTCHA verification was successful and score is above the threshold.
 	if !body.Success || body.Score < 0.7 {
 		return ErrInvalidCaptcha
 	}

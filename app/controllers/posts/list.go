@@ -1,5 +1,0 @@
-package posts
-
-func getRealtimeWS() {
-
-}

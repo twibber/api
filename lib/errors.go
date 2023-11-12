@@ -1,21 +1,19 @@
 package lib
 
-// this is not a separate package to avoid import cycle (I hate my life)
-
 import (
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 
-	"github.com/bytedance/sonic/decoder"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
-	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
+	"github.com/bytedance/sonic/decoder" // JSON decoder
+	"github.com/gofiber/fiber/v2"        // Fiber web framework
+	"github.com/gofiber/fiber/v2/utils"  // Utility functions for Fiber
+	log "github.com/sirupsen/logrus"     // Structured logging package
+	"gorm.io/gorm"                       // GORM ORM package
 )
 
-// these errors are only the recurring ones, if it's an error that's only used once it's just created with NewError on the return
+// Predefined errors for common API responses
 var (
 	ErrInternal           = NewError(http.StatusNotImplemented, "An internal server error occurred while attempting to process the request.", nil)
 	ErrForbidden          = NewError(http.StatusForbidden, "You do not have permission to access the requested resource.", nil)
@@ -24,60 +22,54 @@ var (
 	ErrNotImplemented     = NewError(http.StatusNotImplemented, "A portion of this request has not been implemented.", nil)
 	ErrInvalidCredentials = NewError(http.StatusUnauthorized, "Invalid credentials. Please try again.", &ErrorDetails{
 		Fields: []ErrorField{
-			{
-				Name:   "email",
-				Errors: []string{"Invalid credentials. Please try again."},
-			},
-			{
-				Name:   "password",
-				Errors: []string{"Invalid credentials. Please try again."},
-			},
+			{Name: "email", Errors: []string{"Invalid credentials. Please try again."}},
+			{Name: "password", Errors: []string{"Invalid credentials. Please try again."}},
 		},
 	})
 	ErrInvalidCaptcha = NewError(http.StatusUnauthorized, "The captcha response suggests this action was not performed by a human.", &ErrorDetails{
 		Fields: []ErrorField{
-			{
-				Name:   "captcha",
-				Errors: []string{"The captcha response suggests this action was not performed by a human."},
-			},
+			{Name: "captcha", Errors: []string{"The captcha response suggests this action was not performed by a human."}},
 		},
 	})
 	ErrEmailExists = NewError(http.StatusConflict, "The email address provided has already been registered.", &ErrorDetails{
 		Fields: []ErrorField{
-			{
-				Name:   "email",
-				Errors: []string{"The email address provided has already been registered."},
-			},
+			{Name: "email", Errors: []string{"The email address provided has already been registered."}},
 		},
 	})
 )
 
+// Error represents a standardised error response for the API.
 type Error struct {
-	Status  int           `json:"-"`
-	Code    string        `json:"code"`
-	Message string        `json:"message"`
-	Details *ErrorDetails `json:"details,omitempty"`
+	Status  int           `json:"-"`                 // HTTP status code, not included in the response
+	Code    string        `json:"code"`              // API-specific error code
+	Message string        `json:"message"`           // Human-readable error message
+	Details *ErrorDetails `json:"details,omitempty"` // Optional details about the error
 }
 
+// Error formats the error message string.
 func (e Error) Error() string {
 	return fmt.Sprintf("Code: %s, Message: %s, Details: %v", e.Code, e.Message, e.Details)
 }
 
+// ErrorDetails holds additional data about the error.
 type ErrorDetails struct {
-	Fields []ErrorField `json:"fields,omitempty"`
-	Debug  any          `json:"debug,omitempty"`
+	Fields []ErrorField `json:"fields,omitempty"` // Specific fields related to the error
+	Debug  any          `json:"debug,omitempty"`  // Debug information, included only if debugging is enabled
 }
 
+// ErrorField provides detailed errors for specific fields in the request.
 type ErrorField struct {
-	Name   string   `json:"name"`
-	Errors []string `json:"errors"`
+	Name   string   `json:"name"`   // Name of the field
+	Errors []string `json:"errors"` // List of error messages for the field
 }
 
+// NewError creates a new Error with the provided status, message, and optional details.
 func NewError(status int, message string, details *ErrorDetails, code ...string) Error {
 	var statusCode string
 	if len(code) > 0 {
-		statusCode = code[0]
+		statusCode = code[0] // Use provided error code if available
 	} else {
+		// Otherwise, generate an error code from the HTTP status message
 		statusCode = strings.ReplaceAll(strings.ToUpper(utils.StatusMessage(status)), " ", "_")
 	}
 
@@ -89,31 +81,28 @@ func NewError(status int, message string, details *ErrorDetails, code ...string)
 	}
 }
 
+// ErrorHandler is a custom error handler for the Fiber application.
 func ErrorHandler(c *fiber.Ctx, err error) error {
+	// Handles different types of errors and formats them for API responses
 	switch err.(type) {
 	case Error:
 		e := err.(Error)
-
-		return c.Status(e.Status).JSON(Response{
-			Success: false,
-			Data:    e,
-		})
+		return c.Status(e.Status).JSON(Response{Success: false, Data: e})
 	case *fiber.Error:
 		fiberErr := err.(*fiber.Error)
 		e := NewError(fiberErr.Code, fiberErr.Message, nil)
-
-		return c.Status(e.Status).JSON(Response{
-			Success: false,
-			Data:    e,
-		})
+		return c.Status(e.Status).JSON(Response{Success: false, Data: e})
 	case decoder.SyntaxError:
-		e := NewError(fiber.StatusUnprocessableEntity, "Invalid JSON was provided in the request body.", nil)
+		var e Error
+		if Config.Debug {
+			e = NewError(fiber.StatusBadRequest, fmt.Sprintf("%s: %s", reflect.TypeOf(err).String(), err.Error()), nil)
+		} else {
+			e = NewError(fiber.StatusUnprocessableEntity, "Invalid JSON was provided in the request body.", nil)
+		}
 
-		return c.Status(e.Status).JSON(Response{
-			Success: false,
-			Data:    e,
-		})
+		return c.Status(e.Status).JSON(Response{Success: false, Data: e})
 	default:
+		// Handles GORM's specific errors and maps them to API errors
 		switch err {
 		case gorm.ErrRecordNotFound, gorm.ErrEmptySlice:
 			var e Error
@@ -123,24 +112,15 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 			default:
 				e = ErrNotFound
 			}
-
-			return c.Status(e.Status).JSON(Response{
-				Success: false,
-				Data:    e,
-			})
+			return c.Status(e.Status).JSON(Response{Success: false, Data: e})
 		default:
-			// this is an unhandled error
-			// only give true error while debugging, to avoid leaking sensitive information
+			// Logs unhandled errors and returns a generic error response
 			e := NewError(fiber.StatusInternalServerError, "An internal server error occurred while processing your request", nil)
 			if Config.Debug {
 				log.WithError(err).WithField("errType", reflect.TypeOf(err).String()).Error("An unhandled error occurred.")
 				e = NewError(fiber.StatusInternalServerError, fmt.Sprintf("%s: %s", reflect.TypeOf(err).String(), err.Error()), nil)
 			}
-
-			return c.Status(e.Status).JSON(Response{
-				Success: false,
-				Data:    e,
-			})
+			return c.Status(e.Status).JSON(Response{Success: false, Data: e})
 		}
 	}
 }

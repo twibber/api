@@ -5,31 +5,30 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus" // Logrus - Structured logger for Go
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cache"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/fiber/v2"                      // Fiber - Express inspired web framework written in Go
+	"github.com/gofiber/fiber/v2/middleware/cache"     // Cache middleware for Fiber
+	"github.com/gofiber/fiber/v2/middleware/cors"      // CORS middleware for Fiber
+	"github.com/gofiber/fiber/v2/middleware/recover"   // Recover middleware for Fiber to handle panics and keep server running
+	"github.com/gofiber/fiber/v2/middleware/requestid" // Middleware to attach a request ID for Fiber
 
-	mw "github.com/twibber/api/app/middleware"
-	"github.com/twibber/api/lib"
-	"github.com/twibber/api/router/routes"
+	mw "github.com/twibber/api/app/middleware" // Custom middleware for the Twibber application
+	"github.com/twibber/api/lib"               // Library containing project-specific configurations
+	"github.com/twibber/api/router/routes"     // Package containing route definitions
 )
 
+// Configure sets up the Fiber application with various middleware and routes.
 func Configure() *fiber.App {
-	// configure fiber
+	// Creating a new Fiber application instance with custom configuration.
 	app := fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-		// TODO: change this later to a custom server header
-		ServerHeader: fmt.Sprintf("Twibber"),
-		AppName:      "Twibber",
-		// error handler
-		ErrorHandler: lib.ErrorHandler,
+		DisableStartupMessage: true,                   // Disables the default startup message to handle it manually
+		ServerHeader:          fmt.Sprintf("Twibber"), // Sets the server header, TODO indicates it should be changed later
+		AppName:               "Twibber",              // Sets the name of the application
+		ErrorHandler:          lib.ErrorHandler,       // Custom error handler for the application
 	})
 
-	// log a successful start
+	// Logging the start of the HTTP listener using the app's hooks.
 	app.Hooks().OnListen(func(data fiber.ListenData) error {
 		log.WithFields(log.Fields{
 			"port": data.Port,
@@ -38,19 +37,27 @@ func Configure() *fiber.App {
 		return nil
 	})
 
-	// attaches a request ID to help with debugging and supporting users with API errors
+	// Middleware to attach a unique request ID to each request, aiding in debugging and support.
 	app.Use(requestid.New())
 
+	// Middleware to recover from panics and keep the server running.
 	app.Use(recover.New())
 
+	// Configuring CORS with a custom function to allow origins that contain the application's domain.
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool {
+			// this is only a temporary session to allow testing in production
+			log.WithFields(log.Fields{
+				"origin": origin,
+				"domain": lib.Config.Domain,
+			}).Warn("cors")
+
 			return strings.Contains(origin, lib.Config.Domain)
 		},
 		AllowCredentials: true,
 	}))
 
-	// debug request logger
+	// Middleware for logging each request in debug mode.
 	app.Use(func(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{
 			"method": c.Method(),
@@ -60,9 +67,10 @@ func Configure() *fiber.App {
 		return c.Next()
 	})
 
-	// status route
+	// Setting up the cache for the status route.
 	statusCache := app.Use(cache.New())
 
+	// Status route to provide application health and debug information.
 	statusCache.All("/", func(c *fiber.Ctx) error {
 		var mode = "production"
 		if lib.Config.Debug {
@@ -73,20 +81,20 @@ func Configure() *fiber.App {
 			"success": true,
 			"status": fiber.Map{
 				"title":  app.Config().AppName,
-				"author": "Petar Markov <petar@nolag.host>",
-				"health": "healthy",
+				"author": "Petar Markov <petar@twibber.xyz>",
+				"health": "healthy", // hardcoded for now
 				"mode":   mode,
 				"time":   time.Now().Unix(),
 			},
 		})
 	})
 
+	// Segregate routes
 	routes.Auth(app.Group("/auth"))
-
 	routes.Account(app.Group("/account", mw.Auth(false)))
 	routes.Account(app.Group("/user", mw.Auth(false)))
 
-	// Debugging routes
+	// Debugging block for printing route information, currently commented out.
 	/*
 		for _, route := range app.GetRoutes() {
 			log.WithFields(log.Fields{

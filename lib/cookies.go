@@ -1,15 +1,17 @@
 package lib
 
-import "github.com/gofiber/fiber/v2"
+import "github.com/gofiber/fiber/v2" // Fiber web framework for Go
 
+// ClearAuth removes the "Authorization" cookie from the client, effectively logging the user out.
 func ClearAuth(c *fiber.Ctx) {
+	// Sets the "Authorization" cookie to an empty value and expires it immediately.
 	c.Cookie(&fiber.Cookie{
-		Name:     "Authorization",
-		Value:    "",
-		Path:     "/",
-		Domain:   Config.Domain,
-		MaxAge:   0,
-		HTTPOnly: true,
-		SameSite: "lax",
+		Name:     "Authorization", // Name of the cookie to clear
+		Value:    "",              // Clears the value of the cookie
+		Path:     "/",             // Path for which the cookie is valid
+		Domain:   Config.Domain,   // Domain for which the cookie is valid
+		MaxAge:   0,               // Sets the cookie to expire immediately
+		HTTPOnly: true,            // Prevents JavaScript from accessing the cookie
+		SameSite: "lax",           // Lax same-site policy to allow sending the cookie along with cross-site requests
 	})
 }
