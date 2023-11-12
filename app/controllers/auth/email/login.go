@@ -69,7 +69,7 @@ func Login(c *fiber.Ctx) error {
 		Name:     "Authorization",
 		Value:    token,
 		Path:     "/",
-		Domain:   lib.Config.Domain,
+		Domain:   "." + lib.Config.Domain, // adds a dot to the domain to allow subdomains
 		MaxAge:   int(exp.Seconds()),
 		HTTPOnly: true,
 		SameSite: "lax",

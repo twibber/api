@@ -167,7 +167,7 @@ func OAuthCallback(c *fiber.Ctx) error {
 		Name:     "Authorization",
 		Value:    session.ID,
 		Path:     "/",
-		Domain:   lib.Config.Domain,
+		Domain:   "." + lib.Config.Domain, // adds a dot to the domain to allow subdomains
 		MaxAge:   int(session.ExpiresAt.Sub(time.Now()).Seconds()),
 		HTTPOnly: true,
 		SameSite: "lax",
