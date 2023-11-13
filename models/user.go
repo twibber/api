@@ -10,7 +10,7 @@ type User struct {
 
 	// Details
 	Username    string `gorm:"size:255;not null" json:"username"`
-	DisplayName string `gorm:"size:255;not null" json:"display_name"`
+	DisplayName string `gorm:"size:255" json:"display_name"`
 
 	Admin bool `gorm:"not null;default:false" json:"admin,omitempty"`
 
