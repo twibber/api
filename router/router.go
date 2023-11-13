@@ -85,6 +85,7 @@ func Configure() *fiber.App {
 
 	// Segregate routes
 	routes.Auth(app.Group("/auth"))
+
 	routes.Account(app.Group("/account", mw.Auth(false)))
 	routes.Account(app.Group("/user", mw.Auth(false)))
 
