@@ -2,6 +2,14 @@ package models
 
 import "time"
 
+type PostType string
+
+const (
+	PostTypePost  PostType = "post"
+	PostTypeQuote PostType = "quote"
+	PostTypeReply PostType = "reply"
+)
+
 type Post struct {
 	ID     string `gorm:"primaryKey" json:"id"`
 	UserID string `gorm:"not null" json:"user_id"`
@@ -10,8 +18,8 @@ type Post struct {
 	ParentID *string `json:"parent_id"`
 	Parent   *Post   `gorm:"foreignKey:ParentID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"parent,omitempty"`
 
-	Type    string `json:"type"` // TODO: Quote, Retweet,
-	Content string `gorm:"type:text;not null" json:"content"`
+	Type    PostType `json:"type"`
+	Content string   `gorm:"type:text;not null" json:"content"`
 
 	Likes []Like `gorm:"foreignKey:PostID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"likes,omitempty"`
 
