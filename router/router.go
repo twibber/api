@@ -89,7 +89,7 @@ func Configure() *fiber.App {
 	routes.Account(app.Group("/account", mw.Auth(false)))
 	routes.Account(app.Group("/user", mw.Auth(false)))
 
-	routes.Posts(app.Group("/posts", mw.Auth(true)))
+	routes.Posts(app.Group("/posts"))
 
 	// Debugging block for printing route information, currently commented out.
 	/*
