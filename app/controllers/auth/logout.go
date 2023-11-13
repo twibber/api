@@ -8,14 +8,16 @@ import (
 )
 
 func Logout(c *fiber.Ctx) error {
-	session := c.Locals("session").(models.Session)
+	authCookie := c.Cookies("Authorization")
 
-	// if it reaches this far there ain't a point to backing out
 	lib.ClearAuth(c)
 
-	if err := lib.DB.Delete(&session).Error; err != nil {
-		return err
-	}
+	lib.DB.Delete(&models.Session{
+		ID: authCookie,
+	})
 
-	return c.Redirect(lib.Config.PublicURL, http.StatusTemporaryRedirect)
+	return c.Status(http.StatusOK).JSON(lib.Response{
+		Success: true,
+		Data:    nil,
+	})
 }

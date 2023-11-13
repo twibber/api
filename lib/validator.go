@@ -20,7 +20,7 @@ func ParseAndValidate(c *fiber.Ctx, body any) error {
 		return err // Return early with parsing error.
 	}
 
-	// Initialize a map to hold field validation errors.
+	// Initialise a map to hold field validation errors.
 	var fieldErrs = make(map[string][]string)
 
 	// Perform validation on the struct.

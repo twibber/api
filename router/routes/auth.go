@@ -4,7 +4,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/twibber/api/app/controllers/auth"
 	"github.com/twibber/api/app/controllers/auth/email"
-	mw "github.com/twibber/api/app/middleware"
 )
 
 func Auth(app fiber.Router) {
@@ -16,5 +15,5 @@ func Auth(app fiber.Router) {
 	app.Get("/oauth/:provider", auth.AuthorisationURL)
 	app.Get("/oauth/:provider/callback", auth.OAuthCallback)
 
-	app.All("/logout", mw.Auth(false), auth.Logout)
+	app.All("/logout", auth.Logout)
 }

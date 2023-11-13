@@ -37,7 +37,7 @@ func init() {
 
 	// Configuring Sentry to only be used when not in debug mode.
 	if !lib.Config.Debug {
-		// Initializing Sentry with the project DSN, debugging options, and server name.
+		// Initialising Sentry with the project DSN, debugging options, and server name.
 		if err := sentry.Init(sentry.ClientOptions{
 			Dsn:              lib.Config.SentryDSN,
 			Debug:            true,                  // Enabling Sentry debug mode
@@ -45,7 +45,7 @@ func init() {
 			SampleRate:       1,                     // Setting the sample rate for event reporting
 			ServerName:       os.Getenv("HOSTNAME"), // Using the hostname from environment variable
 		}); err != nil {
-			log.Fatal(err) // Logging and exiting if Sentry initialization fails
+			log.Fatal(err) // Logging and exiting if Sentry initialisation fails
 		}
 
 		// Adding the Sentry hook to logrus for capturing warnings, panics, fatals, and errors.
