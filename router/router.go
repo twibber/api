@@ -46,12 +46,6 @@ func Configure() *fiber.App {
 	// Configuring CORS with a custom function to allow origins that contain the application's domain.
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool {
-			// this is only a temporary session to allow testing in production
-			log.WithFields(log.Fields{
-				"origin": origin,
-				"domain": lib.Config.Domain,
-			}).Warn("cors")
-
 			return strings.Contains(origin, lib.Config.Domain)
 		},
 		AllowCredentials: true,
