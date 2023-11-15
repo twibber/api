@@ -4,7 +4,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
-	"net/http"
 )
 
 func Logout(c *fiber.Ctx) error {
@@ -16,8 +15,5 @@ func Logout(c *fiber.Ctx) error {
 		ID: authCookie,
 	})
 
-	return c.Status(http.StatusOK).JSON(lib.Response{
-		Success: true,
-		Data:    nil,
-	})
+	return c.Redirect(lib.Config.PublicURL, fiber.StatusTemporaryRedirect)
 }

@@ -24,7 +24,7 @@ func CreatePost(c *fiber.Ctx) error {
 		ID:        utils.UUIDv4(),
 		UserID:    session.Connection.User.ID,
 		Type:      models.PostTypePost,
-		Content:   post.Content,
+		Content:   &post.Content,
 		Likes:     []models.Like{},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -35,19 +35,5 @@ func CreatePost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(lib.Response{
 		Success: true,
 		Data:    post,
-	})
-}
-
-func ListPosts(c *fiber.Ctx) error {
-	var posts = make([]models.Post, 0)
-
-	// get all posts sorted by date posted
-	if err := lib.DB.Order("created_at desc").Find(&posts).Error; err != nil {
-		return err
-	}
-
-	return c.Status(fiber.StatusOK).JSON(lib.Response{
-		Success: true,
-		Data:    posts,
 	})
 }
