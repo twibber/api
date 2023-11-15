@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus" // Logrus - Structured logger for Go
 
 	"github.com/gofiber/fiber/v2"                      // Fiber - Express inspired web framework written in Go
-	"github.com/gofiber/fiber/v2/middleware/cache"     // Cache middleware for Fiber
 	"github.com/gofiber/fiber/v2/middleware/cors"      // CORS middleware for Fiber
 	"github.com/gofiber/fiber/v2/middleware/recover"   // Recover middleware for Fiber to handle panics and keep server running
 	"github.com/gofiber/fiber/v2/middleware/requestid" // Middleware to attach a request ID for Fiber
@@ -61,11 +60,8 @@ func Configure() *fiber.App {
 		return c.Next()
 	})
 
-	// Setting up the cache for the status route.
-	statusCache := app.Use(cache.New())
-
 	// Status route to provide application health and debug information.
-	statusCache.All("/", func(c *fiber.Ctx) error {
+	app.All("/", func(c *fiber.Ctx) error {
 		var mode = "production"
 		if lib.Config.Debug {
 			mode = "debug"
