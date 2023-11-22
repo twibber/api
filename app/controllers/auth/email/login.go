@@ -1,10 +1,8 @@
 package email
 
 import (
-	"fmt"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -36,7 +34,6 @@ func Login(c *fiber.Ctx) error {
 		return err
 	}
 
-	log.Debug(fmt.Sprintf("Connection: %+v, %+v", connection.Password, dto.Password))
 	match, err := argon2id.ComparePasswordAndHash(dto.Password, connection.Password)
 	if err != nil {
 		tx.Rollback()
@@ -49,7 +46,6 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	token := lib.GenerateString(64)
-
 	exp := 24 * time.Hour
 
 	if err := tx.Create(&models.Session{

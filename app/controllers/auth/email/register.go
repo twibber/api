@@ -2,9 +2,9 @@ package email
 
 import (
 	"github.com/alexedwards/argon2id"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
+	"runtime"
 
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/mailer"
@@ -42,9 +42,29 @@ func Register(c *fiber.Ctx) error {
 		return lib.ErrEmailExists
 	}
 
-	hashedPassword, err := argon2id.CreateHash(dto.Password, argon2id.DefaultParams)
-	if err != nil {
+	hashedPassword, err := argon2id.CreateHash(dto.Password, &argon2id.Params{
+		Memory:      64 * 1024,
+		Iterations:  16,
+		Parallelism: uint8(runtime.NumCPU()),
+		SaltLength:  32,
+		KeyLength:   128,
+	})
+
+	// check if username already exists
+	var usernameCount int64
+	if err := lib.DB.Model(models.User{}).Where(models.User{Username: dto.Username}).Count(&usernameCount).Error; err != nil {
 		return err
+	}
+
+	if usernameCount > 0 {
+		return lib.NewError(fiber.StatusConflict, "Username already exists.", &lib.ErrorDetails{
+			Fields: []lib.ErrorField{
+				{
+					Name:   "username",
+					Errors: []string{"The username provided is already in use."},
+				},
+			},
+		})
 	}
 
 	token := lib.GenerateString(64)
@@ -61,13 +81,11 @@ func Register(c *fiber.Ctx) error {
 
 	tx := lib.DB.Begin()
 
-	// @todo: document a way of checking if the username already exists
 	user := models.User{
 		ID:          utils.UUIDv4(),
 		Username:    dto.Username,
 		DisplayName: dto.Username,
 		Email:       dto.Email,
-		MFA:         totpCode,
 		Suspended:   false,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -78,14 +96,14 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	exp := 24 * time.Hour
-
 	if err := tx.Create(&models.Connection{
-		ID:        models.Email.WithID(dto.Email),
-		UserID:    user.ID,
-		Password:  hashedPassword,
-		Verified:  false,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:         models.Email.WithID(dto.Email),
+		UserID:     user.ID,
+		Password:   hashedPassword,
+		TOTPVerify: totpCode,
+		Verified:   false,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 		Sessions: []models.Session{
 			{
 				ID:        token,
