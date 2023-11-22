@@ -15,5 +15,5 @@ func Logout(c *fiber.Ctx) error {
 		ID: authCookie,
 	})
 
-	return c.Redirect(lib.Config.PublicURL, fiber.StatusTemporaryRedirect)
+	return c.Status(fiber.StatusOK).JSON(lib.BlankSuccess)
 }
