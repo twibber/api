@@ -20,13 +20,13 @@ var (
 	ErrUnauthorised       = NewError(http.StatusUnauthorized, "You are not authorised to access this endpoint.", nil)
 	ErrNotFound           = NewError(http.StatusNotFound, "The requested resource does not exist.", nil)
 	ErrNotImplemented     = NewError(http.StatusNotImplemented, "A portion of this request has not been implemented.", nil)
-	ErrInvalidCredentials = NewError(http.StatusUnauthorized, "Invalid credentials. Please try again.", &ErrorDetails{
+	ErrInvalidCredentials = NewError(http.StatusBadRequest, "Invalid credentials. Please try again.", &ErrorDetails{
 		Fields: []ErrorField{
 			{Name: "email", Errors: []string{"Invalid credentials. Please try again."}},
 			{Name: "password", Errors: []string{"Invalid credentials. Please try again."}},
 		},
 	})
-	ErrInvalidCaptcha = NewError(http.StatusUnauthorized, "The captcha response suggests this action was not performed by a human.", &ErrorDetails{
+	ErrInvalidCaptcha = NewError(http.StatusBadRequest, "The captcha response suggests this action was not performed by a human.", &ErrorDetails{
 		Fields: []ErrorField{
 			{Name: "captcha", Errors: []string{"The captcha response suggests this action was not performed by a human."}},
 		},
