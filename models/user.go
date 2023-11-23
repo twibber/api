@@ -15,7 +15,7 @@ type User struct {
 	Admin bool `gorm:"not null;default:false" json:"admin,omitempty"`
 
 	// Auth
-	Email string `gorm:"size:255;unique;not null" json:"email"`
+	Email string `gorm:"size:255;unique;not null" json:"-"`
 	MFA   string `json:"-"` // Hidden: Multi-Factor Authentication
 
 	// Account Suspension
