@@ -5,10 +5,11 @@ import (
 	"github.com/gofiber/fiber/v2/utils"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
+	"time"
 )
 
 type CreatePostDTO struct {
-	Content string `json:"content" validate:"required"`
+	Content string `json:"content" validate:"required,max=512,min=1"`
 }
 
 func CreatePost(c *fiber.Ctx) error {
@@ -33,4 +34,26 @@ func CreatePost(c *fiber.Ctx) error {
 		Success: true,
 		Data:    post,
 	})
+}
+
+func DeletePost(c *fiber.Ctx) error {
+	session := c.Locals("session").(models.Session)
+
+	var post models.Post
+	if err := lib.DB.Where(&models.Post{
+		ID:     c.Params("post"),
+		UserID: session.Connection.User.ID,
+	}).First(&post).Error; err != nil {
+		return err
+	}
+
+	if time.Since(post.CreatedAt) > time.Minute*5 {
+		return lib.NewError(fiber.StatusBadRequest, "You cannot delete a post after more than 5 minutes.", nil)
+	}
+
+	if err := lib.DB.Delete(&post).Error; err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(lib.BlankSuccess)
 }

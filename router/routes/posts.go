@@ -13,6 +13,7 @@ func Posts(app fiber.Router) {
 	postRouter := app.Group("/:post")
 	{
 		postRouter.Get("/", posts.GetPost)
+		postRouter.Delete("/", mw.Auth(true), posts.DeletePost)
 
 		postRouter.Post("/reply", mw.Auth(true), posts.CreateReply)
 		postRouter.Post("/repost", mw.Auth(true), posts.CreateRepost)
