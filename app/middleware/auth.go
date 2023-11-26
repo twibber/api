@@ -5,6 +5,7 @@ import (
 	"github.com/sirupsen/logrus" // Structured logging library
 	"gorm.io/gorm"               // ORM library for Golang
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"   // Web framework for Golang
 	"github.com/twibber/api/lib"    // Contains shared configurations and utilities
@@ -49,6 +50,13 @@ func Auth(verify bool) fiber.Handler {
 				return lib.ErrUnauthorised
 			}
 			return err
+		}
+
+		// Rejects expired sessions
+		if session.ExpiresAt.Before(time.Now()) {
+			lib.DB.Delete(&session)
+			lib.ClearAuth(c)
+			return lib.ErrUnauthorised
 		}
 
 		// Proceeds if user is verified or verification isn't required

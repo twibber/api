@@ -87,8 +87,7 @@ func Register(c *fiber.Ctx) error {
 		DisplayName: dto.Username,
 		Email:       dto.Email,
 		Suspended:   false,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		Timestamps:  lib.NewDBTime(),
 	}
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
@@ -97,21 +96,23 @@ func Register(c *fiber.Ctx) error {
 
 	exp := 24 * time.Hour
 	if err := tx.Create(&models.Connection{
-		ID:         models.Email.WithID(dto.Email),
+		ID:         models.EmailType.WithID(dto.Email),
 		UserID:     user.ID,
 		Password:   hashedPassword,
 		TOTPVerify: totpCode,
 		Verified:   false,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
 		Sessions: []models.Session{
 			{
-				ID:        token,
-				ExpiresAt: time.Now().Add(exp),
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+				ID: token,
+				Info: models.SessionInfo{
+					IPAddress: c.IP(),
+					UserAgent: c.Get("User-Agent"),
+				},
+				ExpiresAt:  time.Now().Add(exp),
+				Timestamps: lib.NewDBTime(),
 			},
 		},
+		Timestamps: lib.NewDBTime(),
 	}).Error; err != nil {
 		tx.Rollback()
 		return err

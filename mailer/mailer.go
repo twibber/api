@@ -3,7 +3,7 @@ package mailer
 import (
 	"bytes"
 	"crypto/tls"
-	"github.com/bytedance/sonic"
+	"encoding/json"
 	"github.com/twibber/api/lib"
 	"gopkg.in/gomail.v2"
 	"strconv"
@@ -69,14 +69,14 @@ func init() {
 // Send composes and sends an email with the provided subject, file, and data.
 func Send(subject string, file string, data any) error {
 	// Marshal the data into JSON for unmarshalling into Defaults struct.
-	jsonData, err := sonic.Marshal(data)
+	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
 	// Unmarshal the JSON data into the Defaults struct.
 	var defaultData Defaults
-	if err := sonic.Unmarshal(jsonData, &defaultData); err != nil {
+	if err := json.Unmarshal(jsonData, &defaultData); err != nil {
 		return err
 	}
 

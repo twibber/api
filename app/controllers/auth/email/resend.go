@@ -23,7 +23,7 @@ func ResendCode(c *fiber.Ctx) error {
 	code := strings.Split(utils.UUIDv4(), "-")[0]
 
 	var connection models.Connection
-	if err := lib.DB.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).Preload("User").First(&connection).Error; err != nil {
+	if err := lib.DB.Where(models.Connection{ID: models.EmailType.WithID(dto.Email)}).Preload("User").First(&connection).Error; err != nil {
 		return err
 	}
 

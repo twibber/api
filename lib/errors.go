@@ -1,16 +1,16 @@
 package lib
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 
-	"github.com/bytedance/sonic/decoder" // JSON decoder
-	"github.com/gofiber/fiber/v2"        // Fiber web framework
-	"github.com/gofiber/fiber/v2/utils"  // Utility functions for Fiber
-	log "github.com/sirupsen/logrus"     // Structured logging package
-	"gorm.io/gorm"                       // GORM ORM package
+	"github.com/gofiber/fiber/v2"       // Fiber web framework
+	"github.com/gofiber/fiber/v2/utils" // Utility functions for Fiber
+	log "github.com/sirupsen/logrus"    // Structured logging package
+	"gorm.io/gorm"                      // GORM ORM package
 )
 
 // Predefined errors for common API responses
@@ -92,7 +92,7 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 		fiberErr := err.(*fiber.Error)
 		e := NewError(fiberErr.Code, fiberErr.Message, nil)
 		return c.Status(e.Status).JSON(Response{Success: false, Data: e})
-	case decoder.SyntaxError:
+	case *json.SyntaxError:
 		var e Error
 		if Config.Debug {
 			e = NewError(fiber.StatusBadRequest, fmt.Sprintf("%s: %s", reflect.TypeOf(err).String(), err.Error()), nil)

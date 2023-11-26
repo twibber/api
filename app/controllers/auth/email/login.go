@@ -29,7 +29,7 @@ func Login(c *fiber.Ctx) error {
 	tx := lib.DB.Begin()
 
 	var connection models.Connection
-	if err := tx.Where(models.Connection{ID: models.Email.WithID(dto.Email)}).First(&connection).Error; err != nil {
+	if err := tx.Where(models.Connection{ID: models.EmailType.WithID(dto.Email)}).First(&connection).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -51,9 +51,12 @@ func Login(c *fiber.Ctx) error {
 	if err := tx.Create(&models.Session{
 		ID:           token,
 		ConnectionID: connection.ID,
-		ExpiresAt:    time.Now().Add(exp),
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		Info: models.SessionInfo{
+			IPAddress: c.IP(),
+			UserAgent: c.Get("User-Agent"),
+		},
+		ExpiresAt:  time.Now().Add(exp),
+		Timestamps: lib.NewDBTime(),
 	}).Error; err != nil {
 		tx.Rollback()
 		return err

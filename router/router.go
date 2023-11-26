@@ -87,6 +87,8 @@ func Configure() *fiber.App {
 
 	routes.Posts(app.Group("/posts"))
 
+	routes.Users(app.Group("/users"))
+
 	// Debugging block for printing route information, currently commented out.
 	/*
 		for _, route := range app.GetRoutes() {

@@ -5,7 +5,6 @@ import (
 	"github.com/gofiber/fiber/v2/utils"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
-	"time"
 )
 
 type CreatePostDTO struct {
@@ -21,13 +20,11 @@ func CreatePost(c *fiber.Ctx) error {
 	}
 
 	if err := lib.DB.Create(&models.Post{
-		ID:        utils.UUIDv4(),
-		UserID:    session.Connection.User.ID,
-		Type:      models.PostTypePost,
-		Content:   &post.Content,
-		Likes:     []models.Like{},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:         utils.UUIDv4(),
+		UserID:     session.Connection.User.ID,
+		Type:       models.PostTypePost,
+		Content:    &post.Content,
+		Timestamps: lib.NewDBTime(),
 	}).Error; err != nil {
 		return err
 	}
