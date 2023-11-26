@@ -7,6 +7,11 @@ import (
 )
 
 func ListPosts(c *fiber.Ctx) error {
+	var session *models.Session
+	if c.Locals("session") != nil {
+		session = c.Locals("session").(*models.Session)
+	}
+
 	var posts = make([]models.Post, 0)
 
 	if err := lib.DB.
@@ -15,6 +20,22 @@ func ListPosts(c *fiber.Ctx) error {
 		Where("type = ? OR type = ?", models.PostTypePost, models.PostTypeRepost).
 		Find(&posts).Error; err != nil {
 		return err
+	}
+
+	if session != nil {
+		for i, post := range posts {
+			// check if liked
+			var like models.Like
+			if err := lib.DB.
+				Where(&models.Like{
+					UserID: session.Connection.User.ID,
+					PostID: post.ID,
+				}).First(&like).Error; err != nil {
+				posts[i].Liked = false
+			} else {
+				posts[i].Liked = true
+			}
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
@@ -44,6 +65,18 @@ func GetPost(c *fiber.Ctx) error {
 	// replace all posts to only replies
 	post.Posts = replies
 
+	// check if liked
+	var like models.Like
+	if err := lib.DB.
+		Where(&models.Like{
+			UserID: c.Locals("session").(models.Session).Connection.User.ID,
+			PostID: post.ID,
+		}).First(&like).Error; err != nil {
+		post.Liked = false
+	} else {
+		post.Liked = true
+	}
+
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
 		Data:    post,
@@ -51,6 +84,8 @@ func GetPost(c *fiber.Ctx) error {
 }
 
 func GetPostsByUser(c *fiber.Ctx) error {
+	var session = c.Locals("session").(models.Session)
+
 	var user models.User
 	if err := lib.DB.Where(&models.User{
 		Username: c.Params("user"),
@@ -67,6 +102,20 @@ func GetPostsByUser(c *fiber.Ctx) error {
 		Order("created_at desc").
 		Find(&posts).Error; err != nil {
 		return err
+	}
+
+	// check if liked
+	for i, post := range posts {
+		var like models.Like
+		if err := lib.DB.
+			Where(&models.Like{
+				UserID: session.Connection.User.ID,
+				PostID: post.ID,
+			}).First(&like).Error; err != nil {
+			posts[i].Liked = false
+		} else {
+			posts[i].Liked = true
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{

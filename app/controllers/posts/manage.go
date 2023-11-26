@@ -47,7 +47,7 @@ func DeletePost(c *fiber.Ctx) error {
 		return err
 	}
 
-	if time.Since(post.CreatedAt) > time.Minute*5 {
+	if !session.Connection.User.Admin && time.Since(post.CreatedAt) > time.Minute*5 {
 		return lib.NewError(fiber.StatusBadRequest, "You cannot delete a post after more than 5 minutes.", nil)
 	}
 

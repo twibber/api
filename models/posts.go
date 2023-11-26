@@ -26,6 +26,8 @@ type Post struct {
 	Posts []Post `gorm:"foreignKey:ParentID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"posts,omitempty"` // Posts associated with the post
 	Likes []Like `gorm:"foreignKey:PostID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"likes,omitempty"`   // Likes associated with the post
 
+	Liked bool `gorm:"-" json:"liked,omitempty"` // Flag indicating whether the post was liked by the current user
+
 	Timestamps // Embedded struct for created and updated timestamps
 }
 
