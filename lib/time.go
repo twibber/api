@@ -6,8 +6,10 @@ import (
 )
 
 func NewDBTime() models.Timestamps {
+	var now = time.Now()
+
 	return models.Timestamps{
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }

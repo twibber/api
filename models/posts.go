@@ -36,7 +36,7 @@ type Like struct {
 	ID string `gorm:"primaryKey" json:"id"` // Unique identifier for the like
 
 	UserID string `gorm:"not null" json:"user_id"`                                                                             // ID of the user who liked the post
-	User   User   `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user,omitempty"` // The user who liked the post
+	User   *User  `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user,omitempty"` // The user who liked the post
 
 	PostID string `gorm:"not null" json:"post_id"`                                                                             // ID of the post that was liked
 	Post   Post   `gorm:"foreignKey:PostID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"post,omitempty"` // The post that was liked

@@ -75,10 +75,15 @@ func GetUser(c *fiber.Ctx) error {
 	if err := lib.DB.
 		Model(&models.Like{}).
 		Where(&models.Like{
-			UserID: resp.User.ID,
+			Post: models.Post{
+				UserID: resp.User.ID,
+			},
 		}).Count(&counts.Likes).Error; err != nil {
 		return err
 	}
+
+	// attach counts to response
+	resp.Counts = counts
 
 	// check if the user is following you
 	if err := lib.DB.

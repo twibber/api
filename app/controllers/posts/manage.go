@@ -39,11 +39,17 @@ func CreatePost(c *fiber.Ctx) error {
 func DeletePost(c *fiber.Ctx) error {
 	session := c.Locals("session").(models.Session)
 
-	var post models.Post
-	if err := lib.DB.Where(&models.Post{
+	var selector = &models.Post{
 		ID:     c.Params("post"),
 		UserID: session.Connection.User.ID,
-	}).First(&post).Error; err != nil {
+	}
+
+	if session.Connection.User.Admin {
+		selector.UserID = ""
+	}
+
+	var post models.Post
+	if err := lib.DB.Where(selector).First(&post).Error; err != nil {
 		return err
 	}
 

@@ -35,10 +35,7 @@ func LikePost(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(lib.Response{
-		Success: true,
-		Data:    post,
-	})
+	return c.Status(fiber.StatusOK).JSON(lib.BlankSuccess)
 }
 
 func UnlikePost(c *fiber.Ctx) error {
@@ -60,8 +57,9 @@ func UnlikePost(c *fiber.Ctx) error {
 		return lib.NewError(fiber.StatusBadRequest, "You have not liked this post", nil)
 	}
 
-	return c.Status(fiber.StatusNoContent).JSON(lib.Response{
-		Success: true,
-		Data:    post,
-	})
+	if err := lib.DB.Delete(&like).Error; err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(lib.BlankSuccess)
 }

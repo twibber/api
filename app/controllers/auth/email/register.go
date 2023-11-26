@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
 	"runtime"
+	"strings"
 
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/mailer"
@@ -17,7 +18,7 @@ import (
 )
 
 type RegisterDTO struct {
-	Username string `json:"username" validate:"required,max=32"`
+	Username string `json:"username"  validate:"required,min=3,max=32,ascii,lowercase"`
 	Email    string `json:"email"     validate:"required,email,max=512"`
 	Password string `json:"password"  validate:"required,min=8"`
 	Captcha  string `json:"captcha"   validate:""`
@@ -50,6 +51,9 @@ func Register(c *fiber.Ctx) error {
 		KeyLength:   128,
 	})
 
+	// this is a just incase scenario, should never happen
+	dto.Username = strings.ToLower(dto.Username)
+
 	// check if username already exists
 	var usernameCount int64
 	if err := lib.DB.Model(models.User{}).Where(models.User{Username: dto.Username}).Count(&usernameCount).Error; err != nil {
@@ -80,14 +84,26 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	tx := lib.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		} else if err != nil {
+			tx.Rollback()
+		} else {
+			err = tx.Commit().Error
+		}
+	}()
 
 	user := models.User{
-		ID:          utils.UUIDv4(),
-		Username:    dto.Username,
-		DisplayName: dto.Username,
-		Email:       dto.Email,
-		Suspended:   false,
-		Timestamps:  lib.NewDBTime(),
+		ID:             utils.UUIDv4(),
+		Username:       dto.Username,
+		DisplayName:    dto.Username,
+		Admin:          false,
+		VerifiedPerson: false,
+		Email:          dto.Email,
+		MFA:            "",
+		Suspended:      false,
+		Timestamps:     lib.NewDBTime(),
 	}
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()

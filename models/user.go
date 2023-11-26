@@ -2,8 +2,8 @@ package models
 
 // User represents the system user with related authentication details and profile information.
 type User struct {
-	ID     string `gorm:"primaryKey" json:"id"`                     // Unique identifier for the user
-	JoinID int64  `gorm:"not null;default:0;unique" json:"join_id"` // A unique joining ID for the user
+	ID     string `gorm:"primaryKey" json:"id"`                         // Unique identifier for the user
+	JoinID int64  `gorm:"not null;unique;autoIncrement" json:"join_id"` // A unique joining ID for the user
 
 	Username    string `gorm:"size:255;not null;unique" json:"username"` // The user's chosen username, unique across the system
 	DisplayName string `gorm:"size:255" json:"display_name"`             // The user's display name, shown to other users
