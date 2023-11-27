@@ -41,6 +41,7 @@ func ListPosts(c *fiber.Ctx) error {
 		Model(&models.Post{}).
 		Preload("User").
 		Preload("Likes").
+		Preload("Parent").
 		Where("type IN ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}).
 		Order("created_at DESC").
 		Find(&posts).Error
