@@ -8,7 +8,7 @@ import (
 )
 
 type ReplyDTO struct {
-	Content string `json:"content" validate:"required"`
+	Content string `json:"content" validate:"required,max=512"`
 }
 
 func CreateReply(c *fiber.Ctx) error {

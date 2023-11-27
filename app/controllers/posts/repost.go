@@ -8,7 +8,7 @@ import (
 )
 
 type RepostDTO struct {
-	Content string `json:"content" validate:"required"`
+	Content string `json:"content" validate:"max=512"`
 }
 
 func CreateRepost(c *fiber.Ctx) error {
@@ -24,6 +24,10 @@ func CreateRepost(c *fiber.Ctx) error {
 	var parentPost models.Post
 	if err := lib.DB.Where("id = ?", postID).First(&parentPost).Error; err != nil {
 		return err
+	}
+
+	if parentPost.Type == models.PostTypeRepost {
+		return lib.NewError(fiber.StatusBadRequest, "You cannot repost a repost", nil)
 	}
 
 	dbReply := &models.Post{
