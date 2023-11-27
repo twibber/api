@@ -42,6 +42,7 @@ func ListPosts(c *fiber.Ctx) error {
 		Preload("User").
 		Preload("Likes").
 		Preload("Parent").
+		Preload("Parent.User").
 		Where("type IN ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}).
 		Order("created_at DESC").
 		Find(&posts).Error
@@ -75,6 +76,8 @@ func GetPostsByUser(c *fiber.Ctx) error {
 	err := lib.DB.
 		Preload("User").
 		Preload("Likes").
+		Preload("Parent").
+		Preload("Parent.User").
 		Joins("JOIN users ON users.id = posts.user_id").
 		Where("posts.type IN ? AND users.username = ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}, username).
 		Order("posts.created_at DESC").
@@ -110,6 +113,8 @@ func GetPost(c *fiber.Ctx) error {
 		Model(&models.Post{}).
 		Preload("User").
 		Preload("Likes").
+		Preload("Parent").
+		Preload("Parent.User").
 		Preload("Posts", "type = ?", models.PostTypeReply).
 		Where("id = ?", postID).
 		First(&post).Error
