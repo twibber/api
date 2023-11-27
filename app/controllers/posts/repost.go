@@ -8,7 +8,7 @@ import (
 )
 
 type RepostDTO struct {
-	Content string `json:"content" validate:"max=512"`
+	Content string `json:"content" validate:"omitempty,max=512"`
 }
 
 func CreateRepost(c *fiber.Ctx) error {
@@ -16,7 +16,7 @@ func CreateRepost(c *fiber.Ctx) error {
 
 	postID := c.Params("post")
 
-	var dto ReplyDTO
+	var dto RepostDTO
 	if err := lib.ParseAndValidate(c, &dto); err != nil {
 		return err
 	}
