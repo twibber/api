@@ -1,6 +1,6 @@
 package models
 
-// PostType represents the type of a post.
+// PostType represents the type of the post.
 type PostType string
 
 // Constants for different post types.
@@ -39,7 +39,7 @@ type Like struct {
 	User   *User  `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user,omitempty"` // The user who liked the post
 
 	PostID string `gorm:"not null" json:"post_id"`                                                                             // ID of the post that was liked
-	Post   Post   `gorm:"foreignKey:PostID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"post,omitempty"` // The post that was liked
+	Post   *Post  `gorm:"foreignKey:PostID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"post,omitempty"` // The post that was liked
 
 	Timestamps // Embedded struct for created and updated timestamps
 }

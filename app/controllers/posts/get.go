@@ -30,139 +30,131 @@ type Counts struct {
 // ListPosts returns a list of all posts on the platform.
 func ListPosts(c *fiber.Ctx) error {
 	session := lib.GetSession(c)
-	userID := ""
 
+	var userID string
 	if session != nil {
 		userID = session.Connection.User.ID
 	}
 
-	var respPosts []PostQueryResult
-	if err := lib.DB.
-		Table("posts").
-		Select("posts.*, users.*, "+ // Select all columns from posts and users
-			"COALESCE((SELECT COUNT(*) FROM likes WHERE post_id = posts.id), 0) as counts_likes, "+ // Count likes
-			"COALESCE((SELECT COUNT(*) FROM posts WHERE parent_id = posts.id AND type = 'reply'), 0) as counts_replies, "+ // Count replies
-			"COALESCE((SELECT COUNT(*) FROM posts WHERE parent_id = posts.id AND type = 'repost'), 0) as counts_reposts, "+ // Count reposts
-			"EXISTS(SELECT 1 FROM likes WHERE user_id = ? AND post_id = posts.id) as liked", // Check if the current user has liked the post
-									userID). // Pass the current user ID to the query
-		Joins("JOIN users ON posts.user_id = users.id").      // Join the users table
-		Where("posts.type IN ?", []string{"post", "repost"}). // Only select posts and reposts
-		Order("posts.created_at DESC").                       // Order by newest first
-		Scan(&respPosts).Error; err != nil {
+	var posts []models.Post
+	err := lib.DB.
+		Model(&models.Post{}).
+		Preload("User").
+		Preload("Likes").
+		Where("type IN ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}).
+		Order("created_at DESC").
+		Find(&posts).Error
+	if err != nil {
 		return err
 	}
 
-	var posts = make([]PostResponse, 0)
-	for _, post := range respPosts {
-		var curPost = PostResponse{
-			Post: post.Post,
-			Counts: Counts{
-				Likes:   post.CountsLikes,
-				Replies: post.CountsReplies,
-				Reposts: post.CountsReposts,
-			},
-			Liked: post.Liked,
-		}
-
-		curPost.Post.User = post.User
-
-		posts = append(posts, curPost)
+	var postResponses = make([]PostResponse, 0)
+	for _, post := range posts {
+		postResponses = append(postResponses, populatePostResponse(post, userID))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    posts,
+		Data:    postResponses,
 	})
 }
 
 // GetPostsByUser returns a list of posts by a user, in the same format as ListPosts.
 func GetPostsByUser(c *fiber.Ctx) error {
-	session := lib.GetSession(c)
-	userID := ""
+	username := c.Params("user")
 
+	session := lib.GetSession(c)
+
+	var userID string
 	if session != nil {
 		userID = session.Connection.User.ID
 	}
 
-	var respPosts []PostQueryResult
+	var posts []models.Post
 	err := lib.DB.
-		Table("posts").
-		Select("posts.*, users.*, "+ // Select all columns from posts and users
-			"COALESCE((SELECT COUNT(*) FROM likes WHERE post_id = posts.id), 0) as counts_likes, "+ // Count likes
-			"COALESCE((SELECT COUNT(*) FROM posts WHERE parent_id = posts.id AND type = 'reply'), 0) as counts_replies, "+ // Count replies
-			"COALESCE((SELECT COUNT(*) FROM posts WHERE parent_id = posts.id AND type = 'repost'), 0) as counts_reposts, "+ // Count reposts
-			"EXISTS(SELECT 1 FROM likes WHERE user_id = ? AND post_id = posts.id) as liked", // Check if the current user has liked the post
-			userID).
-		Joins("JOIN users ON posts.user_id = users.id").
-		Where("posts.type IN ? AND users.username = ?", []string{"post", "repost"}, c.Params("user")).
+		Preload("User").
+		Preload("Likes").
+		Joins("JOIN users ON users.id = posts.user_id").
+		Where("posts.type IN ? AND users.username = ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}, username).
 		Order("posts.created_at DESC").
-		Scan(&respPosts).Error
+		Find(&posts).Error
 	if err != nil {
 		return err
 	}
 
-	var posts = make([]PostResponse, 0)
-	for _, post := range respPosts {
-		var curPost = PostResponse{
-			Post: post.Post,
-			Counts: Counts{
-				Likes:   post.CountsLikes,
-				Replies: post.CountsReplies,
-				Reposts: post.CountsReposts,
-			},
-			Liked: post.Liked,
-		}
-
-		curPost.Post.User = post.User
-
-		posts = append(posts, curPost)
+	var postResponses = make([]PostResponse, 0)
+	for _, post := range posts {
+		postResponses = append(postResponses, populatePostResponse(post, userID))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    posts,
+		Data:    postResponses, // Ensure you return the postResponses, not the posts
 	})
 }
 
 // GetPost returns a single post by ID with the Post.Posts attribute being filled with nothing but replies of the post sorted by order of posted, newer are further up.
 func GetPost(c *fiber.Ctx) error {
 	session := lib.GetSession(c)
-	userID := ""
 
+	postID := c.Params("post")
+
+	var userID string
 	if session != nil {
 		userID = session.Connection.User.ID
 	}
 
-	var respPost PostQueryResult
+	var post models.Post
 	err := lib.DB.
-		Select("posts.*, users.*, "+ // Select all columns from posts and users
-			"COALESCE((SELECT COUNT(*) FROM likes WHERE post_id = posts.id), 0) as counts_likes, "+ // Count likes
-			"COALESCE((SELECT COUNT(*) FROM posts WHERE parent_id = posts.id AND type = 'reply'), 0) as counts_replies, "+ // Count replies
-			"COALESCE((SELECT COUNT(*) FROM posts WHERE parent_id = posts.id AND type = 'repost'), 0) as counts_reposts, "+ // Count reposts
-			"EXISTS(SELECT 1 FROM likes WHERE user_id = ? AND post_id = posts.id) as liked", // Check if the current user has liked the post
-			userID).
-		Joins("JOIN users ON posts.user_id = users.id").
-		Where("posts.type IN ? AND users.username = ?", []string{"post", "repost"}, c.Params("user")).
-		Order("posts.created_at DESC").
-		First(&respPost).Error
+		Model(&models.Post{}).
+		Preload("User").
+		Preload("Likes").
+		Preload("Posts", "type = ?", models.PostTypeReply).
+		Where("id = ?", postID).
+		First(&post).Error
 	if err != nil {
-		return err
+		return lib.ErrNotFound
 	}
 
-	var curPost = PostResponse{
-		Post: respPost.Post,
-		Counts: Counts{
-			Likes:   respPost.CountsLikes,
-			Replies: respPost.CountsReplies,
-			Reposts: respPost.CountsReposts,
-		},
-		Liked: respPost.Liked,
-	}
-
-	curPost.Post.User = respPost.User
+	// Populate the counts and liked status for the post
+	postResponse := populatePostResponse(post, userID)
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    curPost,
+		Data:    postResponse,
 	})
+}
+
+func populatePostResponse(post models.Post, userID string) PostResponse {
+	// Count likes, replies, and reposts
+	likesCount := len(post.Likes)
+	repliesCount := 0
+	repostsCount := 0
+	for _, p := range post.Posts {
+		switch p.Type {
+		case models.PostTypeReply:
+			repliesCount++
+		case models.PostTypeRepost:
+			repostsCount++
+		}
+	}
+
+	// Check if the post was liked by the current user
+	likedByUser := false
+	for _, like := range post.Likes {
+		if like.UserID == userID {
+			likedByUser = true
+			break
+		}
+	}
+
+	return PostResponse{
+		Post: post,
+		Counts: Counts{
+			Likes:   int64(likesCount),
+			Replies: int64(repliesCount),
+			Reposts: int64(repostsCount),
+		},
+		Liked: likedByUser,
+	}
 }
