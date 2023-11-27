@@ -17,8 +17,9 @@ type PostQueryResult struct {
 
 type PostResponse struct {
 	models.Post
-	Counts Counts `json:"counts"`
-	Liked  bool   `json:"liked"`
+	Counts Counts        `json:"counts"`
+	Liked  bool          `json:"liked"`
+	Parent *PostResponse `json:"parent,omitempty"`
 }
 
 type Counts struct {
@@ -41,8 +42,11 @@ func ListPosts(c *fiber.Ctx) error {
 		Model(&models.Post{}).
 		Preload("User").
 		Preload("Likes").
+		Preload("Posts").
 		Preload("Parent").
 		Preload("Parent.User").
+		Preload("Parent.Likes").
+		Preload("Parent.Posts").
 		Where("type IN ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}).
 		Order("created_at DESC").
 		Find(&posts).Error
@@ -76,9 +80,12 @@ func GetPostsByUser(c *fiber.Ctx) error {
 	err := lib.DB.
 		Preload("User").
 		Preload("Likes").
+		Preload("Posts").
 		Preload("Parent").
 		Preload("Parent.User").
-		Joins("JOIN users ON users.id = posts.user_id").
+		Preload("Parent.Likes").
+		Preload("Parent.Posts").
+		Joins("JOIN users ON users.id = posts.user_id"). // Join the users table so we can filter by username
 		Where("posts.type IN ? AND users.username = ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}, username).
 		Order("posts.created_at DESC").
 		Find(&posts).Error
@@ -113,9 +120,11 @@ func GetPost(c *fiber.Ctx) error {
 		Model(&models.Post{}).
 		Preload("User").
 		Preload("Likes").
+		Preload("Posts").
 		Preload("Parent").
 		Preload("Parent.User").
-		Preload("Posts", "type = ?", models.PostTypeReply).
+		Preload("Parent.Likes").
+		Preload("Parent.Posts").
 		Where("id = ?", postID).
 		First(&post).Error
 	if err != nil {
@@ -136,14 +145,19 @@ func populatePostResponse(post models.Post, userID string) PostResponse {
 	likesCount := len(post.Likes)
 	repliesCount := 0
 	repostsCount := 0
+
+	repliesOnly := make([]models.Post, 0)
 	for _, p := range post.Posts {
 		switch p.Type {
 		case models.PostTypeReply:
+			repliesOnly = append(repliesOnly, p)
 			repliesCount++
 		case models.PostTypeRepost:
 			repostsCount++
 		}
 	}
+
+	post.Posts = repliesOnly
 
 	// Check if the post was liked by the current user
 	likedByUser := false
@@ -154,6 +168,12 @@ func populatePostResponse(post models.Post, userID string) PostResponse {
 		}
 	}
 
+	var parentResponse *PostResponse
+	if post.Parent != nil {
+		parentPostResponse := populatePostResponse(*post.Parent, userID)
+		parentResponse = &parentPostResponse
+	}
+
 	return PostResponse{
 		Post: post,
 		Counts: Counts{
@@ -161,6 +181,7 @@ func populatePostResponse(post models.Post, userID string) PostResponse {
 			Replies: int64(repliesCount),
 			Reposts: int64(repostsCount),
 		},
-		Liked: likedByUser,
+		Liked:  likedByUser,
+		Parent: parentResponse,
 	}
 }
