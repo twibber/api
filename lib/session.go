@@ -46,6 +46,7 @@ func GetSession(c *fiber.Ctx) *models.Session {
 	}
 
 	if session.ExpiresAt.Before(time.Now()) {
+		logrus.Debug("Session expired")
 		DB.Delete(&session)
 		return nil
 	}

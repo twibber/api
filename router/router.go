@@ -81,12 +81,9 @@ func Configure() *fiber.App {
 
 	// Segregate routes
 	routes.Auth(app.Group("/auth"))
-
 	routes.Account(app.Group("/account", mw.Auth(false)))
-	routes.Account(app.Group("/user", mw.Auth(false)))
 
 	routes.Posts(app.Group("/posts"))
-
 	routes.Users(app.Group("/users"))
 
 	// Debugging block for printing route information, currently commented out.
