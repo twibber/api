@@ -6,23 +6,24 @@ import (
 	"github.com/twibber/api/models"
 )
 
-func ListUsers(c *fiber.Ctx) error {
-	var users []models.User
-	if err := lib.DB.Find(&users).Error; err != nil {
-		return err
-	}
+type UserQueryResult struct {
+	models.User
 
-	return c.Status(fiber.StatusOK).JSON(lib.Response{
-		Success: true,
-		Data:    users,
-	})
+	CountsFollowers int64 `gorm:"column:counts_followers"`
+	CountsFollowing int64 `gorm:"column:counts_following"`
+	CountsPosts     int64 `gorm:"column:counts_posts"`
+	CountsLikes     int64 `gorm:"column:counts_likes"`
+
+	FollowsYou bool `gorm:"column:follows_you"`
+	Following  bool `gorm:"column:following"`
 }
 
 type UserResponse struct {
 	models.User
-	Counts     Counts `json:"counts"`
-	Following  bool   `json:"following"`
-	FollowsYou bool   `json:"follows_you"`
+	Counts Counts `json:"counts"`
+
+	YouFollow  bool `json:"you_follow"`
+	FollowsYou bool `json:"follows_you"`
 }
 
 type Counts struct {
@@ -32,82 +33,91 @@ type Counts struct {
 	Likes     int64 `json:"likes"`
 }
 
-func GetUser(c *fiber.Ctx) error {
-	// get current user
-	var session = c.Locals("session").(models.Session)
+func ListUsers(c *fiber.Ctx) error {
+	session := lib.GetSession(c)
+	userID := ""
 
-	// create response
-	resp := UserResponse{}
+	if session != nil {
+		userID = session.Connection.User.ID
+	}
 
-	// get user
-	if err := lib.DB.Where(&models.User{
-		Username: c.Params("user"),
-	}).First(&resp.User).Error; err != nil {
+	var dbUsers []UserQueryResult
+	if err := lib.DB.
+		Table("users").
+		Select("users.*, "+
+			"COALESCE((SELECT COUNT(*) FROM follows WHERE followed_id = users.id), 0) as counts_followers, "+
+			"COALESCE((SELECT COUNT(*) FROM follows WHERE user_id = users.id), 0) as counts_following, "+
+			"COALESCE((SELECT COUNT(*) FROM posts WHERE user_id = users.id), 0) as counts_posts, "+
+			"COALESCE((SELECT COUNT(*) FROM likes JOIN posts ON likes.post_id = posts.id WHERE posts.user_id = users.id), 0) as counts_likes, "+
+			"EXISTS(SELECT 1 FROM follows WHERE user_id = ? AND followed_id = users.id) as you_follow, "+
+			"EXISTS(SELECT 1 FROM follows WHERE user_id = users.id AND followed_id = ?) as follows_you",
+			userID, userID).
+		Order("users.created_at DESC").
+		Scan(&dbUsers).Error; err != nil {
 		return err
 	}
 
-	// count followers, following, posts, likes
-	var counts Counts
-	if err := lib.DB.
-		Model(&models.Follow{}).
-		Where(&models.Follow{
-			FollowedID: resp.User.ID,
-		}).Count(&counts.Followers).Error; err != nil {
-		return err
-	}
-
-	if err := lib.DB.
-		Model(&models.Follow{}).
-		Where(&models.Follow{
-			UserID: resp.User.ID,
-		}).Count(&counts.Following).Error; err != nil {
-		return err
-	}
-
-	if err := lib.DB.
-		Model(&models.Post{}).
-		Where(&models.Post{
-			UserID: resp.User.ID,
-		}).Count(&counts.Posts).Error; err != nil {
-		return err
-	}
-
-	if err := lib.DB.
-		Model(&models.Like{}).
-		Where(&models.Like{
-			Post: models.Post{
-				UserID: resp.User.ID,
+	var users = make([]UserResponse, 0)
+	for _, dbUser := range dbUsers {
+		users = append(users, UserResponse{
+			User: dbUser.User,
+			Counts: Counts{
+				Followers: dbUser.CountsFollowers,
+				Following: dbUser.CountsFollowing,
+				Posts:     dbUser.CountsPosts,
+				Likes:     dbUser.CountsLikes,
 			},
-		}).Count(&counts.Likes).Error; err != nil {
-		return err
+			YouFollow:  dbUser.Following,
+			FollowsYou: dbUser.FollowsYou,
+		})
 	}
 
-	// attach counts to response
-	resp.Counts = counts
-
-	// check if the user is following you
-	if err := lib.DB.
-		Model(&models.Follow{}).
-		Where(&models.Follow{
-			UserID:     session.Connection.User.ID,
-			FollowedID: resp.User.ID,
-		}).First(&resp.Following).Error; err != nil {
-		resp.Following = false
-	}
-
-	// check if you are following the user
-	if err := lib.DB.
-		Model(&models.Follow{}).
-		Where(&models.Follow{
-			UserID:     resp.User.ID,
-			FollowedID: session.Connection.User.ID,
-		}).First(&resp.FollowsYou).Error; err != nil {
-		resp.FollowsYou = false
-	}
-
-	// set counts
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    resp,
+		Data:    users,
+	})
+}
+
+func GetUserByUsername(c *fiber.Ctx) error {
+	session := lib.GetSession(c)
+
+	curUserID := ""
+	if session != nil {
+		curUserID = session.Connection.User.ID
+	}
+
+	username := c.Params("user")
+
+	// get user by username
+	var dbUser UserQueryResult
+	if err := lib.DB.
+		Table("users").
+		Select("users.*, "+
+			"COALESCE((SELECT COUNT(*) FROM follows WHERE followed_id = users.id), 0) as counts_followers, "+
+			"COALESCE((SELECT COUNT(*) FROM follows WHERE user_id = users.id), 0) as counts_following, "+
+			"COALESCE((SELECT COUNT(*) FROM posts WHERE user_id = users.id), 0) as counts_posts, "+
+			"COALESCE((SELECT COUNT(*) FROM likes JOIN posts ON likes.post_id = posts.id WHERE posts.user_id = users.id), 0) as counts_likes, "+
+			"EXISTS(SELECT 1 FROM follows WHERE user_id = ? AND followed_id = users.id) as you_follow, "+
+			"EXISTS(SELECT 1 FROM follows WHERE user_id = users.id AND followed_id = ?) as follows_you",
+			curUserID, curUserID).
+		Where("users.username = ?", username).
+		First(&dbUser).Error; err != nil {
+		return err
+	}
+
+	// Respond with the user data
+	return c.Status(fiber.StatusOK).JSON(lib.Response{
+		Success: true,
+		Data: UserResponse{
+			User: dbUser.User,
+			Counts: Counts{
+				Followers: dbUser.CountsFollowers,
+				Following: dbUser.CountsFollowing,
+				Posts:     dbUser.CountsPosts,
+				Likes:     dbUser.CountsLikes,
+			},
+			YouFollow:  dbUser.Following,
+			FollowsYou: dbUser.FollowsYou,
+		},
 	})
 }

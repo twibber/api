@@ -12,7 +12,7 @@ func Users(app fiber.Router) {
 
 	userRouter := app.Group("/:user")
 	{
-		userRouter.Get("/", users.GetUser)
+		userRouter.Get("/", users.GetUserByUsername)
 
 		userRouter.Get("/posts", posts.GetPostsByUser)
 
