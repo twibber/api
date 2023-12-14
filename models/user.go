@@ -2,8 +2,9 @@ package models
 
 // User represents the system user with related authentication details and profile information.
 type User struct {
-	ID     string `gorm:"primaryKey" json:"id"`                         // Unique identifier for the user
-	JoinID int64  `gorm:"not null;unique;autoIncrement" json:"join_id"` // A unique joining ID for the user
+	BaseModel
+
+	JoinID int64 `gorm:"not null;unique;autoIncrement" json:"join_id"` // A unique joining ID for the user
 
 	Username    string `gorm:"size:255;not null;unique" json:"username"` // The user's chosen username, unique across the system
 	DisplayName string `gorm:"size:255" json:"display_name"`             // The user's display name, shown to other users
@@ -27,19 +28,15 @@ type User struct {
 
 	Posts []Post `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"` // Posts created by the user
 	Likes []Like `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"` // Likes made by the user on posts
-
-	Timestamps // Embedded struct for created and updated timestamps
 }
 
 // Follow represents a relationship where a User is following another User.
 type Follow struct {
-	ID string `gorm:"primaryKey" json:"id"` // Unique identifier for the follow relationship
+	BaseModel
 
 	UserID string `gorm:"not null" json:"user_id"`                                                                             // ID of the user who is following
 	User   User   `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user,omitempty"` // The user who is following
 
 	FollowedID string `gorm:"not null" json:"followed_id"`                                                                                 // ID of the user being followed
 	Followed   User   `gorm:"foreignKey:FollowedID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"followed,omitempty"` // The user being followed
-
-	Timestamps // Embedded struct for created and updated timestamps
 }

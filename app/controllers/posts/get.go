@@ -6,39 +6,17 @@ import (
 	"github.com/twibber/api/models"
 )
 
-type PostQueryResult struct {
-	models.Post
-	models.User
-	CountsLikes   int64 `gorm:"column:counts_likes"`
-	CountsReplies int64 `gorm:"column:counts_replies"`
-	CountsReposts int64 `gorm:"column:counts_reposts"`
-	Liked         bool  `gorm:"column:liked"`
-}
-
-type PostResponse struct {
-	models.Post
-	Counts Counts        `json:"counts"`
-	Liked  bool          `json:"liked"`
-	Parent *PostResponse `json:"parent,omitempty"`
-}
-
-type Counts struct {
-	Likes   int64 `json:"likes"`
-	Replies int64 `json:"replies"`
-	Reposts int64 `json:"reposts"`
-}
-
 // ListPosts returns a list of all posts on the platform.
 func ListPosts(c *fiber.Ctx) error {
 	session := lib.GetSession(c)
+	userID := ""
 
-	var userID string
 	if session != nil {
 		userID = session.Connection.User.ID
 	}
 
 	var posts []models.Post
-	err := lib.DB.
+	if err := lib.DB.
 		Model(&models.Post{}).
 		Preload("User").
 		Preload("Likes").
@@ -47,76 +25,36 @@ func ListPosts(c *fiber.Ctx) error {
 		Preload("Parent.User").
 		Preload("Parent.Likes").
 		Preload("Parent.Posts").
-		Where("type IN ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}).
-		Order("created_at DESC").
-		Find(&posts).Error
-	if err != nil {
+		Preload("Parent.Parent").
+		Where("type = ? OR type = ?", models.PostTypePost, models.PostTypeRepost).
+		Order("created_at desc").
+		Find(&posts).Error; err != nil {
 		return err
 	}
 
-	var postResponses = make([]PostResponse, 0)
-	for _, post := range posts {
-		postResponses = append(postResponses, populatePostResponse(post, userID))
+	for i := range posts {
+		populatePostCounts(&posts[i], userID, false)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    postResponses,
+		Data:    posts,
 	})
 }
 
-// GetPostsByUser returns a list of posts by a user, in the same format as ListPosts.
 func GetPostsByUser(c *fiber.Ctx) error {
 	username := c.Params("user")
 
-	session := lib.GetSession(c)
-
-	var userID string
-	if session != nil {
-		userID = session.Connection.User.ID
-	}
-
-	var posts []models.Post
-	err := lib.DB.
-		Preload("User").
-		Preload("Likes").
-		Preload("Posts").
-		Preload("Parent").
-		Preload("Parent.User").
-		Preload("Parent.Likes").
-		Preload("Parent.Posts").
-		Joins("JOIN users ON users.id = posts.user_id"). // Join the users table so we can filter by username
-		Where("posts.type IN ? AND users.username = ?", []string{string(models.PostTypePost), string(models.PostTypeRepost)}, username).
-		Order("posts.created_at DESC").
-		Find(&posts).Error
-	if err != nil {
+	var user models.User
+	if err := lib.DB.
+		Model(&models.User{}).
+		Where(&models.User{Username: username}).
+		First(&user).Error; err != nil {
 		return err
 	}
 
-	var postResponses = make([]PostResponse, 0)
-	for _, post := range posts {
-		postResponses = append(postResponses, populatePostResponse(post, userID))
-	}
-
-	return c.Status(fiber.StatusOK).JSON(lib.Response{
-		Success: true,
-		Data:    postResponses, // Ensure you return the postResponses, not the posts
-	})
-}
-
-// GetPost returns a single post by ID with the Post.Posts attribute being filled with nothing but replies of the post sorted by order of posted, newer are further up.
-func GetPost(c *fiber.Ctx) error {
-	session := lib.GetSession(c)
-
-	postID := c.Params("post")
-
-	var userID string
-	if session != nil {
-		userID = session.Connection.User.ID
-	}
-
-	var post models.Post
-	err := lib.DB.
+	var posts []models.Post
+	if err := lib.DB.
 		Model(&models.Post{}).
 		Preload("User").
 		Preload("Likes").
@@ -125,63 +63,102 @@ func GetPost(c *fiber.Ctx) error {
 		Preload("Parent.User").
 		Preload("Parent.Likes").
 		Preload("Parent.Posts").
-		Where("id = ?", postID).
-		First(&post).Error
-	if err != nil {
-		return lib.ErrNotFound
+		Preload("Parent.Parent").
+		Where(&models.Post{
+			UserID: user.ID,
+		}).
+		Where("type = ? OR type = ?", models.PostTypePost, models.PostTypeRepost).
+		Order("created_at desc").
+		Find(&posts).Error; err != nil {
+		return err
 	}
 
-	// Populate the counts and liked status for the post
-	postResponse := populatePostResponse(post, userID)
+	sessionUserID := ""
+	if session := lib.GetSession(c); session != nil {
+		sessionUserID = session.Connection.User.ID
+	}
+
+	for i := range posts {
+		populatePostCounts(&posts[i], sessionUserID, false)
+	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    postResponse,
+		Data:    posts,
 	})
 }
 
-func populatePostResponse(post models.Post, userID string) PostResponse {
-	// Count likes, replies, and reposts
-	likesCount := len(post.Likes)
-	repliesCount := 0
-	repostsCount := 0
+func GetPost(c *fiber.Ctx) error {
+	postID := c.Params("post")
 
-	repliesOnly := make([]models.Post, 0)
-	for _, p := range post.Posts {
-		switch p.Type {
-		case models.PostTypeReply:
-			repliesOnly = append(repliesOnly, p)
-			repliesCount++
-		case models.PostTypeRepost:
-			repostsCount++
-		}
+	var post models.Post
+	if err := lib.DB.
+		Model(&models.Post{}).
+		Preload("User").
+		Preload("Likes").
+		Preload("Posts").
+		Preload("Parent").
+		Preload("Parent.User").
+		Preload("Parent.Likes").
+		Preload("Parent.Posts").
+		Preload("Parent.Parent").
+		Preload("Posts.User").
+		Preload("Posts.Likes").
+		Preload("Posts.Posts").
+		Where("id = ?", postID).
+		First(&post).Error; err != nil {
+		return err
 	}
 
-	post.Posts = repliesOnly
+	sessionUserID := ""
+	if session := lib.GetSession(c); session != nil {
+		sessionUserID = session.Connection.User.ID
+	}
 
-	// Check if the post was liked by the current user
-	likedByUser := false
+	populatePostCounts(&post, sessionUserID, true)
+
+	return c.Status(fiber.StatusOK).JSON(lib.Response{
+		Success: true,
+		Data:    post,
+	})
+}
+
+// populatePostCounts populates the counts and liked fields on a post.
+func populatePostCounts(post *models.Post, userID string, includeReplies bool) {
+	// check if liked by user
 	for _, like := range post.Likes {
 		if like.UserID == userID {
-			likedByUser = true
+			post.Liked = true
 			break
 		}
 	}
 
-	var parentResponse *PostResponse
-	if post.Parent != nil {
-		parentPostResponse := populatePostResponse(*post.Parent, userID)
-		parentResponse = &parentPostResponse
+	// count likes on post
+	post.Counts.Likes = len(post.Likes)
+
+	var replies []models.Post
+	// count replies and reposts on post
+	for _, subPost := range post.Posts {
+		switch subPost.Type {
+		case models.PostTypeReply:
+			post.Counts.Replies++
+			if includeReplies {
+				populatePostCounts(&subPost, userID, false)
+				replies = append(replies, subPost)
+			}
+		case models.PostTypeRepost:
+			post.Counts.Reposts++
+		}
 	}
 
-	return PostResponse{
-		Post: post,
-		Counts: Counts{
-			Likes:   int64(likesCount),
-			Replies: int64(repliesCount),
-			Reposts: int64(repostsCount),
-		},
-		Liked:  likedByUser,
-		Parent: parentResponse,
+	if includeReplies {
+		post.Posts = replies
+	} else {
+		post.Posts = nil
+	}
+
+	// if there is a parent post, recursively populate its counts
+	if post.Parent != nil {
+		populatePostCounts(post.Parent, userID, false)
 	}
 }

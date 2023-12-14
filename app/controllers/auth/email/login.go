@@ -29,7 +29,11 @@ func Login(c *fiber.Ctx) error {
 	tx := lib.DB.Begin()
 
 	var connection models.Connection
-	if err := tx.Where(models.Connection{ID: models.EmailType.WithID(dto.Email)}).First(&connection).Error; err != nil {
+	if err := tx.Where(models.Connection{
+		BaseModel: models.BaseModel{
+			ID: models.EmailType.WithID(dto.Email),
+		},
+	}).First(&connection).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -49,14 +53,15 @@ func Login(c *fiber.Ctx) error {
 	exp := 24 * time.Hour
 
 	if err := tx.Create(&models.Session{
-		ID:           token,
+		BaseModel: models.BaseModel{
+			ID: token,
+		},
 		ConnectionID: connection.ID,
 		Info: models.SessionInfo{
 			IPAddress: c.IP(),
 			UserAgent: c.Get("User-Agent"),
 		},
-		ExpiresAt:  time.Now().Add(exp),
-		Timestamps: lib.NewDBTime(),
+		ExpiresAt: time.Now().Add(exp),
 	}).Error; err != nil {
 		tx.Rollback()
 		return err
@@ -64,15 +69,8 @@ func Login(c *fiber.Ctx) error {
 
 	tx.Commit()
 
-	c.Cookie(&fiber.Cookie{
-		Name:     "Authorization",
-		Value:    token,
-		Path:     "/",
-		Domain:   "." + lib.Config.Domain, // adds a dot to the domain to allow subdomains
-		MaxAge:   int(exp.Seconds()),
-		HTTPOnly: true,
-		SameSite: "lax",
-	})
+	// Set a cookie with the authorization token.
+	lib.SetAuth(c, token, exp)
 
 	return c.Status(http.StatusOK).JSON(lib.BlankSuccess)
 }

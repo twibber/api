@@ -2,13 +2,12 @@ package posts
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
 )
 
 type RepostDTO struct {
-	Content string `json:"content" validate:"omitempty,max=512"`
+	Content string `json:"content" validate:"omitempty,max=512,min=1,notblank"`
 }
 
 func CreateRepost(c *fiber.Ctx) error {
@@ -31,12 +30,10 @@ func CreateRepost(c *fiber.Ctx) error {
 	}
 
 	dbReply := &models.Post{
-		ID:         utils.UUIDv4(),
-		UserID:     session.Connection.User.ID,
-		Type:       models.PostTypeRepost,
-		ParentID:   &parentPost.ID,
-		Content:    &dto.Content,
-		Timestamps: lib.NewDBTime(),
+		UserID:   session.Connection.User.ID,
+		Type:     models.PostTypeRepost,
+		ParentID: &parentPost.ID,
+		Content:  &dto.Content,
 	}
 
 	if err := lib.DB.Create(&dbReply).Error; err != nil {

@@ -2,19 +2,20 @@ package router
 
 import (
 	"fmt"
+	"github.com/gofiber/fiber/v2/middleware/cache"
+	mw "github.com/twibber/api/app/middleware"
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus" // Logrus - Structured logger for Go
+	log "github.com/sirupsen/logrus"
 
 	"github.com/gofiber/fiber/v2"                      // Fiber - Express inspired web framework written in Go
 	"github.com/gofiber/fiber/v2/middleware/cors"      // CORS middleware for Fiber
 	"github.com/gofiber/fiber/v2/middleware/recover"   // Recover middleware for Fiber to handle panics and keep server running
 	"github.com/gofiber/fiber/v2/middleware/requestid" // Middleware to attach a request ID for Fiber
 
-	mw "github.com/twibber/api/app/middleware" // Custom middleware for the Twibber application
-	"github.com/twibber/api/lib"               // Library containing project-specific configurations
-	"github.com/twibber/api/router/routes"     // Package containing route definitions
+	"github.com/twibber/api/lib"           // Library containing project-specific configurations
+	"github.com/twibber/api/router/routes" // Package containing route definitions
 )
 
 // Configure sets up the Fiber application with various middleware and routes.
@@ -22,7 +23,7 @@ func Configure() *fiber.App {
 	// Creating a new Fiber application instance with custom configuration.
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,                   // Disables the default startup message to handle it manually
-		ServerHeader:          fmt.Sprintf("Twibber"), // Sets the server header, TODO indicates it should be changed later
+		ServerHeader:          fmt.Sprintf("Twibber"), // Sets the server header, TODO: to be changed to use version
 		AppName:               "Twibber",              // Sets the name of the application
 		ErrorHandler:          lib.ErrorHandler,       // Custom error handler for the application
 	})
@@ -42,7 +43,7 @@ func Configure() *fiber.App {
 	// Middleware to recover from panics and keep the server running.
 	app.Use(recover.New())
 
-	// Configuring CORS with a custom function to allow origins that contain the application's domain.
+	// CORS to allow requests from the configured domain
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool {
 			return strings.Contains(origin, lib.Config.Domain)
@@ -60,8 +61,12 @@ func Configure() *fiber.App {
 		return c.Next()
 	})
 
+	statusCache := app.Group("/", cache.New(cache.Config{
+		Expiration: 10 * time.Second,
+	}))
+
 	// Status route to provide application health and debug information.
-	app.All("/", func(c *fiber.Ctx) error {
+	statusCache.All("/", func(c *fiber.Ctx) error {
 		var mode = "production"
 		if lib.Config.Debug {
 			mode = "debug"
@@ -82,22 +87,8 @@ func Configure() *fiber.App {
 	// Segregate routes
 	routes.Auth(app.Group("/auth"))
 	routes.Account(app.Group("/account", mw.Auth(false)))
-
 	routes.Posts(app.Group("/posts"))
 	routes.Users(app.Group("/users"))
-
-	// Debugging block for printing route information, currently commented out.
-	/*
-		for _, route := range app.GetRoutes() {
-			log.WithFields(log.Fields{
-				"name":     route.Name,
-				"path":     route.Path,
-				"params":   route.Params,
-				"handlers": route.Handlers,
-				"method":   route.Method,
-			}).Debug(route.Path)
-		}
-	*/
 
 	return app
 }

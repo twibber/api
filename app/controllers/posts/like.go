@@ -2,7 +2,6 @@ package posts
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
 )
@@ -12,7 +11,7 @@ func LikePost(c *fiber.Ctx) error {
 
 	var post models.Post
 	if err := lib.DB.Where(&models.Post{
-		ID: c.Params("post"),
+		BaseModel: models.BaseModel{ID: c.Params("post")},
 	}).First(&post).Error; err != nil {
 		return err
 	}
@@ -27,10 +26,8 @@ func LikePost(c *fiber.Ctx) error {
 	}
 
 	if err := lib.DB.Create(&models.Like{
-		ID:         utils.UUIDv4(),
-		UserID:     session.Connection.User.ID,
-		PostID:     post.ID,
-		Timestamps: lib.NewDBTime(),
+		UserID: session.Connection.User.ID,
+		PostID: post.ID,
 	}).Error; err != nil {
 		return err
 	}
@@ -43,7 +40,7 @@ func UnlikePost(c *fiber.Ctx) error {
 
 	var post models.Post
 	if err := lib.DB.Where(&models.Post{
-		ID: c.Params("post"),
+		BaseModel: models.BaseModel{ID: c.Params("post")},
 	}).First(&post).Error; err != nil {
 		return err
 	}

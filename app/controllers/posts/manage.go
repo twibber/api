@@ -2,14 +2,13 @@ package posts
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
 	"time"
 )
 
 type CreatePostDTO struct {
-	Content string `json:"content" validate:"required,max=512,min=1"`
+	Content string `json:"content" validate:"required,max=512,min=1,notblank"`
 }
 
 func CreatePost(c *fiber.Ctx) error {
@@ -21,11 +20,9 @@ func CreatePost(c *fiber.Ctx) error {
 	}
 
 	if err := lib.DB.Create(&models.Post{
-		ID:         utils.UUIDv4(),
-		UserID:     session.Connection.User.ID,
-		Type:       models.PostTypePost,
-		Content:    &post.Content,
-		Timestamps: lib.NewDBTime(),
+		UserID:  session.Connection.User.ID,
+		Type:    models.PostTypePost,
+		Content: &post.Content,
 	}).Error; err != nil {
 		return err
 	}
@@ -40,8 +37,8 @@ func DeletePost(c *fiber.Ctx) error {
 	session := c.Locals("session").(models.Session)
 
 	var selector = &models.Post{
-		ID:     c.Params("post"),
-		UserID: session.Connection.User.ID,
+		BaseModel: models.BaseModel{ID: c.Params("post")},
+		UserID:    session.Connection.User.ID,
 	}
 
 	if session.Connection.User.Admin {

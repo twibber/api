@@ -129,5 +129,3 @@ func subtleCompare(a, b string) bool {
 	}
 	return diff == 0
 }
-
-// Get

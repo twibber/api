@@ -2,13 +2,12 @@ package posts
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"github.com/twibber/api/lib"
 	"github.com/twibber/api/models"
 )
 
 type ReplyDTO struct {
-	Content string `json:"content" validate:"required,max=512"`
+	Content string `json:"content" validate:"required,max=512,min=1,notblank"`
 }
 
 func CreateReply(c *fiber.Ctx) error {
@@ -21,18 +20,16 @@ func CreateReply(c *fiber.Ctx) error {
 
 	var parentPost models.Post
 	if err := lib.DB.Where(&models.Post{
-		ID: c.Params("post"),
+		BaseModel: models.BaseModel{ID: c.Params("post")},
 	}).First(&parentPost).Error; err != nil {
 		return err
 	}
 
 	dbReply := &models.Post{
-		ID:         utils.UUIDv4(),
-		UserID:     session.Connection.User.ID,
-		Type:       models.PostTypeReply,
-		ParentID:   &parentPost.ID,
-		Content:    &dto.Content,
-		Timestamps: lib.NewDBTime(),
+		UserID:   session.Connection.User.ID,
+		Type:     models.PostTypeReply,
+		ParentID: &parentPost.ID,
+		Content:  &dto.Content,
 	}
 
 	if err := lib.DB.Create(&dbReply).Error; err != nil {

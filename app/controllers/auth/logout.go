@@ -12,7 +12,7 @@ func Logout(c *fiber.Ctx) error {
 	lib.ClearAuth(c)
 
 	lib.DB.Delete(&models.Session{
-		ID: authCookie,
+		BaseModel: models.BaseModel{ID: authCookie},
 	})
 
 	return c.Status(fiber.StatusOK).JSON(lib.BlankSuccess)

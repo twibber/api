@@ -15,7 +15,7 @@ type UserQueryResult struct {
 	CountsLikes     int64 `gorm:"column:counts_likes"`
 
 	FollowsYou bool `gorm:"column:follows_you"`
-	Following  bool `gorm:"column:following"`
+	YouFollow  bool `gorm:"column:you_follow"`
 }
 
 type UserResponse struct {
@@ -67,7 +67,7 @@ func ListUsers(c *fiber.Ctx) error {
 				Posts:     dbUser.CountsPosts,
 				Likes:     dbUser.CountsLikes,
 			},
-			YouFollow:  dbUser.Following,
+			YouFollow:  dbUser.YouFollow,
 			FollowsYou: dbUser.FollowsYou,
 		})
 	}
@@ -116,7 +116,7 @@ func GetUserByUsername(c *fiber.Ctx) error {
 				Posts:     dbUser.CountsPosts,
 				Likes:     dbUser.CountsLikes,
 			},
-			YouFollow:  dbUser.Following,
+			YouFollow:  dbUser.YouFollow,
 			FollowsYou: dbUser.FollowsYou,
 		},
 	})

@@ -13,10 +13,5 @@ func Auth(app fiber.Router) {
 	app.Post("/email/verify", mw.Auth(false), email.Verify)
 	app.Post("/email/resend", email.ResendCode)
 
-	/*
-		app.Get("/oauth/:provider", auth.AuthorisationURL)
-		app.Get("/oauth/:provider/callback", auth.OAuthCallback)
-	*/
-
 	app.All("/logout", auth.Logout)
 }

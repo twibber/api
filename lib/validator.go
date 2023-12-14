@@ -2,6 +2,8 @@ package lib
 
 import (
 	"fmt"
+	"github.com/go-playground/validator/v10/non-standard/validators"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"reflect"
 	"strings"
@@ -12,6 +14,14 @@ import (
 
 // Validator instance used to validate struct fields.
 var validate = validator.New()
+
+func init() {
+	// Register custom validation tags.
+	err := validate.RegisterValidation("notblank", validators.NotBlank)
+	if err != nil {
+		log.WithError(err).Fatal("failed to register notblank validation tag")
+	}
+}
 
 // ParseAndValidate parses the request body into the given struct and performs validation.
 func ParseAndValidate(c *fiber.Ctx, body any) error {

@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// GetSession returns the session from the database using the auth token provided in the request.
 func GetSession(c *fiber.Ctx) *models.Session {
 	// Extracts auth token from header or cookie
 	authHeader := c.Get("Authorization")
@@ -37,7 +38,11 @@ func GetSession(c *fiber.Ctx) *models.Session {
 
 	// Fetches session from database using auth token
 	var session models.Session
-	if err := DB.Where(models.Session{ID: authToken}).Preload("Connection").Preload("Connection.User").First(&session).Error; err != nil {
+	if err := DB.Where(models.Session{
+		BaseModel: models.BaseModel{
+			ID: authToken,
+		},
+	}).Preload("Connection").Preload("Connection.User").First(&session).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			logrus.Debug("Session not found")
 			return nil
