@@ -58,8 +58,8 @@ func Login(c *fiber.Ctx) error {
 		},
 		ConnectionID: connection.ID,
 		Info: models.SessionInfo{
-			IPAddress: c.IP(),
-			UserAgent: c.Get("User-Agent"),
+			IPAddresses: c.IPs(),
+			UserAgent:   c.Get("User-Agent"),
 		},
 		ExpiresAt: time.Now().Add(exp),
 	}).Error; err != nil {

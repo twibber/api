@@ -53,6 +53,11 @@ type Configuration struct {
 
 	// Sentry error reporting DSN
 	SentryDSN string `env:"SENTRY_DSN"` // Data Source Name for Sentry
+
+	// imgproxy Config
+	ImgproxyURL  string `env:"IMGPROXY_URL"`  // imgproxy url
+	ImgproxyKey  string `env:"IMGPROXY_KEY"`  // imgproxy key
+	ImgproxySalt string `env:"IMGPROXY_SALT"` // imgproxy salt
 }
 
 // Config holds the global configuration loaded from environment variables.

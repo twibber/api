@@ -123,8 +123,8 @@ func Register(c *fiber.Ctx) error {
 			{
 				BaseModel: models.BaseModel{ID: token},
 				Info: models.SessionInfo{
-					IPAddress: c.IP(),
-					UserAgent: c.Get("User-Agent"),
+					IPAddresses: c.IPs(),
+					UserAgent:   c.Get("User-Agent"),
 				},
 				ExpiresAt: time.Now().Add(exp),
 			},

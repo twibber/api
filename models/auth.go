@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"github.com/lib/pq"
+	"time"
+)
 
 // ConnectionType represents the type of authentication method.
 type ConnectionType string
@@ -40,6 +43,6 @@ type Session struct {
 
 // SessionInfo holds information about the session such as IP address and user agent.
 type SessionInfo struct {
-	IPAddress string `gorm:"size:255" json:"ip_address,omitempty"`
-	UserAgent string `gorm:"size:255" json:"user_agent,omitempty"`
+	IPAddresses pq.StringArray `gorm:"type:text[]" json:"ip_addresses,omitempty"`
+	UserAgent   string         `gorm:"size:255" json:"user_agent,omitempty"`
 }
