@@ -13,17 +13,11 @@ type UserQueryResult struct {
 	CountsFollowing int64 `gorm:"column:counts_following"`
 	CountsPosts     int64 `gorm:"column:counts_posts"`
 	CountsLikes     int64 `gorm:"column:counts_likes"`
-
-	FollowsYou bool `gorm:"column:follows_you"`
-	YouFollow  bool `gorm:"column:you_follow"`
 }
 
 type UserResponse struct {
 	models.User
 	Counts Counts `json:"counts"`
-
-	YouFollow  bool `json:"you_follow"`
-	FollowsYou bool `json:"follows_you"`
 }
 
 type Counts struct {
@@ -41,40 +35,36 @@ func ListUsers(c *fiber.Ctx) error {
 		userID = session.Connection.User.ID
 	}
 
-	var dbUsers []UserQueryResult
+	var dbUsers []models.User
 	if err := lib.DB.
-		Table("users").
-		Select("users.*, "+
-			"COALESCE((SELECT COUNT(*) FROM follows WHERE followed_id = users.id), 0) as counts_followers, "+
-			"COALESCE((SELECT COUNT(*) FROM follows WHERE user_id = users.id), 0) as counts_following, "+
-			"COALESCE((SELECT COUNT(*) FROM posts WHERE user_id = users.id), 0) as counts_posts, "+
-			"COALESCE((SELECT COUNT(*) FROM likes JOIN posts ON likes.post_id = posts.id WHERE posts.user_id = users.id), 0) as counts_likes, "+
-			"EXISTS(SELECT 1 FROM follows WHERE user_id = ? AND followed_id = users.id) as you_follow, "+
-			"EXISTS(SELECT 1 FROM follows WHERE user_id = users.id AND followed_id = ?) as follows_you",
-			userID, userID).
+		Model(&models.User{}).
+		Preload("Followers").
+		Preload("Following").
 		Order("users.created_at DESC").
-		Scan(&dbUsers).Error; err != nil {
+		Find(&dbUsers).Error; err != nil {
 		return err
 	}
 
-	var users = make([]UserResponse, 0)
-	for _, dbUser := range dbUsers {
-		users = append(users, UserResponse{
-			User: dbUser.User,
-			Counts: Counts{
-				Followers: dbUser.CountsFollowers,
-				Following: dbUser.CountsFollowing,
-				Posts:     dbUser.CountsPosts,
-				Likes:     dbUser.CountsLikes,
-			},
-			YouFollow:  dbUser.YouFollow,
-			FollowsYou: dbUser.FollowsYou,
-		})
+	// check if the user follows each user and if each user follows the user
+	for i, dbUser := range dbUsers {
+		for _, follower := range dbUser.Followers {
+			if follower.UserID == userID {
+				dbUsers[i].YouFollow = true
+				break
+			}
+		}
+
+		for _, following := range dbUser.Following {
+			if following.UserID == userID {
+				dbUsers[i].FollowsYou = true
+				break
+			}
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    users,
+		Data:    dbUsers,
 	})
 }
 
@@ -105,19 +95,22 @@ func GetUserByUsername(c *fiber.Ctx) error {
 		return err
 	}
 
+	userResp := UserResponse{
+		User: dbUser.User,
+		Counts: Counts{
+			Followers: dbUser.CountsFollowers,
+			Following: dbUser.CountsFollowing,
+			Posts:     dbUser.CountsPosts,
+			Likes:     dbUser.CountsLikes,
+		},
+	}
+
+	userResp.YouFollow = dbUser.YouFollow
+	userResp.FollowsYou = dbUser.FollowsYou
+
 	// Respond with the user data
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data: UserResponse{
-			User: dbUser.User,
-			Counts: Counts{
-				Followers: dbUser.CountsFollowers,
-				Following: dbUser.CountsFollowing,
-				Posts:     dbUser.CountsPosts,
-				Likes:     dbUser.CountsLikes,
-			},
-			YouFollow:  dbUser.YouFollow,
-			FollowsYou: dbUser.FollowsYou,
-		},
+		Data:    userResp,
 	})
 }

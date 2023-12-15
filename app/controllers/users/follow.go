@@ -74,44 +74,108 @@ func UnfollowUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(lib.BlankSuccess)
 }
 
-func GetFollowers(c *fiber.Ctx) error {
+func GetFollowersByUsername(c *fiber.Ctx) error {
+	username := c.Params("user")
 	var user models.User
-	if err := lib.DB.Table("users").Where(models.User{
-		BaseModel: models.BaseModel{ID: c.Params("user")},
-	}).First(&user).Error; err != nil {
+	if err := lib.DB.Where("username = ?", username).First(&user).Error; err != nil {
 		return err
+	}
+
+	curUserID := ""
+	session := lib.GetSession(c)
+	if session != nil {
+		curUserID = session.Connection.User.ID
 	}
 
 	var followers []models.Follow
-	if err := lib.DB.Table("follows").Where(&models.Follow{
-		FollowedID: user.ID,
-	}).Find(&followers).Error; err != nil {
+	if err := lib.DB.
+		Where(&models.Follow{
+			FollowedID: user.ID,
+		}).
+		Preload("User").
+		Preload("User.Followers").
+		Preload("User.Following").
+		Find(&followers).Error; err != nil {
 		return err
+	}
+
+	var followersUsers []models.User
+	for _, follower := range followers {
+		follower.User.YouFollow = false
+		follower.User.FollowsYou = false
+
+		for _, followerFollower := range follower.User.Followers {
+			if followerFollower.UserID == curUserID {
+				follower.User.YouFollow = true
+				break
+			}
+		}
+
+		for _, followerFollowing := range follower.User.Following {
+			if followerFollowing.UserID == curUserID {
+				follower.User.FollowsYou = true
+				break
+			}
+		}
+
+		followersUsers = append(followersUsers, follower.User)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    followers,
+		Data:    followersUsers,
 	})
 }
 
-func GetFollowing(c *fiber.Ctx) error {
+func GetFollowingByUsername(c *fiber.Ctx) error {
+	username := c.Params("user")
 	var user models.User
-	if err := lib.DB.Table("users").Where(models.User{
-		BaseModel: models.BaseModel{ID: c.Params("user")},
-	}).First(&user).Error; err != nil {
+	if err := lib.DB.Where("username = ?", username).First(&user).Error; err != nil {
 		return err
 	}
 
+	curUserID := ""
+	session := lib.GetSession(c)
+	if session != nil {
+		curUserID = session.Connection.User.ID
+	}
+
 	var following []models.Follow
-	if err := lib.DB.Table("follows").Where(&models.Follow{
-		UserID: user.ID,
-	}).Find(&following).Error; err != nil {
+	if err := lib.DB.
+		Where(&models.Follow{
+			UserID: user.ID,
+		}).
+		Preload("Followed").
+		Preload("Followed.Followers").
+		Preload("Followed.Following").
+		Find(&following).Error; err != nil {
 		return err
+	}
+
+	var followingUsers []models.User
+	for _, followed := range following {
+		followed.Followed.YouFollow = false
+		followed.Followed.FollowsYou = false
+
+		for _, followedFollower := range followed.Followed.Followers {
+			if followedFollower.UserID == curUserID {
+				followed.Followed.YouFollow = true
+				break
+			}
+		}
+
+		for _, followedFollowing := range followed.Followed.Following {
+			if followedFollowing.UserID == curUserID {
+				followed.Followed.FollowsYou = true
+				break
+			}
+		}
+
+		followingUsers = append(followingUsers, followed.Followed)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(lib.Response{
 		Success: true,
-		Data:    following,
+		Data:    followingUsers,
 	})
 }

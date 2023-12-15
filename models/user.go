@@ -28,6 +28,10 @@ type User struct {
 
 	Posts []Post `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"` // Posts created by the user
 	Likes []Like `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"` // Likes made by the user on posts
+
+	// Fields Hidden from GORM
+	YouFollow  bool `gorm:"-" json:"you_follow"`  // Flag indicating whether the current user follows this user
+	FollowsYou bool `gorm:"-" json:"follows_you"` // Flag indicating whether this user follows the current user
 }
 
 // Follow represents a relationship where a User is following another User.

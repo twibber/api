@@ -16,6 +16,9 @@ func Users(app fiber.Router) {
 
 		userRouter.Get("/posts", posts.GetPostsByUser)
 
+		userRouter.Get("/followers", users.GetFollowersByUsername)
+		userRouter.Get("/following", users.GetFollowingByUsername)
+
 		userRouter.Post("/follow", mw.Auth(true), users.FollowUser)
 		userRouter.Delete("/follow", mw.Auth(true), users.UnfollowUser)
 	}
