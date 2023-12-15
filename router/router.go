@@ -2,7 +2,6 @@ package router
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2/middleware/cache"
 	mw "github.com/twibber/api/app/middleware"
 	"strings"
 	"time"
@@ -61,12 +60,8 @@ func Configure() *fiber.App {
 		return c.Next()
 	})
 
-	statusCache := app.Group("/", cache.New(cache.Config{
-		Expiration: 10 * time.Second,
-	}))
-
 	// Status route to provide application health and debug information.
-	statusCache.All("/", func(c *fiber.Ctx) error {
+	app.All("/", func(c *fiber.Ctx) error {
 		var mode = "production"
 		if lib.Config.Debug {
 			mode = "debug"
