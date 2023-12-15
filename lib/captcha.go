@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"time"
@@ -28,6 +29,7 @@ func CheckCaptcha(captcha string) error {
 
 	// Return error if captcha token is empty.
 	if captcha == "" {
+		log.Warn("reCAPTCHA verification failed: captcha token is empty")
 		return ErrInvalidCaptcha
 	}
 
@@ -64,6 +66,15 @@ func CheckCaptcha(captcha string) error {
 
 	// Validate if reCAPTCHA verification was successful and score is above the threshold.
 	if !body.Success || body.Score < 0.3 {
+		log.WithFields(log.Fields{
+			"success":      body.Success,
+			"score":        body.Score,
+			"action":       body.Action,
+			"challenge_ts": body.ChallengeTS,
+			"hostname":     body.Hostname,
+			"error_codes":  body.ErrorCodes,
+		}).Warn("reCAPTCHA verification failed")
+
 		return ErrInvalidCaptcha
 	}
 
