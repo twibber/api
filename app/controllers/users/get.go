@@ -88,7 +88,7 @@ func GetUserByUsername(c *fiber.Ctx) error {
 		}
 
 		for _, following := range user.Following {
-			if following.UserID == curUserID {
+			if following.FollowedID == curUserID {
 				user.FollowsYou = true
 				break
 			}
