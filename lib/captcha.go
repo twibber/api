@@ -63,7 +63,7 @@ func CheckCaptcha(captcha string) error {
 	}
 
 	// Validate if reCAPTCHA verification was successful and score is above the threshold.
-	if !body.Success || body.Score < 0.5 {
+	if !body.Success || body.Score < 0.3 {
 		return ErrInvalidCaptcha
 	}
 
