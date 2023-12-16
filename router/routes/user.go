@@ -13,6 +13,7 @@ func Users(app fiber.Router) {
 	userRouter := app.Group("/:user")
 	{
 		userRouter.Get("/", users.GetUserByUsername)
+		userRouter.Delete("/", mw.Auth(true), mw.AdminCheck, users.DeleteUser)
 
 		userRouter.Get("/posts", posts.GetPostsByUser)
 
