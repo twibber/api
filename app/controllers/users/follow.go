@@ -13,7 +13,7 @@ func FollowUser(c *fiber.Ctx) error {
 
 	var user models.User
 	if err := lib.DB.Table("users").Where(models.User{
-		BaseModel: models.BaseModel{ID: c.Params("user")},
+		Username: c.Params("user"),
 	}).First(&user).Error; err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func UnfollowUser(c *fiber.Ctx) error {
 
 	var user models.User
 	if err := lib.DB.Table("users").Where(models.User{
-		BaseModel: models.BaseModel{ID: c.Params("user")},
+		Username: c.Params("user"),
 	}).First(&user).Error; err != nil {
 		return err
 	}
