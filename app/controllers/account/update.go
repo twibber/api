@@ -1,27 +1,51 @@
 package account
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/twibber/api/lib"
+	"github.com/twibber/api/models"
+)
 
-func UpdateProfilePicture(c *fiber.Ctx) error {
-	return nil
+type UpdateProfileDTO struct {
+	DisplayName string `json:"display_name" validate:"omitempty,min=3,max=32,notblank"`
+	Username    string `json:"username" validate:"omitempty,min=3,max=32,lowercase,ascii,notblank"`
 }
 
-func UpdateProfileBanner(c *fiber.Ctx) error {
-	return nil
-}
+func UpdateProfile(c *fiber.Ctx) error {
+	session := lib.GetSession(c)
 
-func UpdateUsername(c *fiber.Ctx) error {
-	return nil
-}
+	var dto UpdateProfileDTO
+	if err := lib.ParseAndValidate(c, &dto); err != nil {
+		return err
+	}
 
-func UpdateDisplayName(c *fiber.Ctx) error {
-	return nil
-}
+	user := session.Connection.User
 
-func UpdateAbout(c *fiber.Ctx) error {
-	return nil
-}
+	if dto.Username != "" && dto.Username != user.Username {
+		// check if user with username already exists
+		var userExists int64
+		if err := lib.DB.Table("users").Where(&models.User{
+			Username: dto.Username,
+		}).Count(&userExists).Error; err != nil {
+			return err
+		}
 
-func UpdateEmail(c *fiber.Ctx) error {
-	return nil
+		if userExists > 0 {
+			return lib.NewError(fiber.StatusBadRequest, "A user with that username already exists.", nil)
+		}
+
+		user.Username = dto.Username
+	}
+
+	if dto.DisplayName != "" && dto.DisplayName != user.DisplayName {
+		user.DisplayName = dto.DisplayName
+	}
+
+	if err := lib.DB.Table("users").Where(&models.User{
+		BaseModel: models.BaseModel{ID: session.Connection.User.ID},
+	}).Updates(user).Error; err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(lib.BlankSuccess)
 }

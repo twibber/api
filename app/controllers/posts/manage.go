@@ -41,6 +41,7 @@ func DeletePost(c *fiber.Ctx) error {
 		UserID:    session.Connection.User.ID,
 	}
 
+	// allow admins to delete any post
 	if session.Connection.User.Admin {
 		selector.UserID = ""
 	}
@@ -50,6 +51,7 @@ func DeletePost(c *fiber.Ctx) error {
 		return err
 	}
 
+	// allow deletion of posts within 5 minutes and allow admins to delete posts at any time
 	if !session.Connection.User.Admin && time.Since(post.CreatedAt) > time.Minute*5 {
 		return lib.NewError(fiber.StatusBadRequest, "You cannot delete a post after more than 5 minutes.", nil)
 	}

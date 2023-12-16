@@ -10,4 +10,6 @@ func Account(app fiber.Router) {
 	app.Get("/email", account.GetAccountEmail)
 	app.Get("/connections", account.ListConnections)
 	app.Get("/sessions", account.ListSessions)
+
+	app.Patch("/", account.UpdateProfile)
 }
