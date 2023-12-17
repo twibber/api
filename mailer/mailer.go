@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"github.com/twibber/api/lib"
+	cfg "github.com/twibber/api/config"
 	"gopkg.in/gomail.v2"
 	"strconv"
 
@@ -25,24 +25,24 @@ var (
 // init sets up the mailer with the appropriate configuration and parses the templates.
 func init() {
 	// Convert the configured port to an integer.
-	port, err := strconv.Atoi(lib.Config.MailPort)
+	port, err := strconv.Atoi(cfg.Config.MailPort)
 	if err != nil {
 		log.WithError(err).Fatal("mail port could not be converted to an integer")
 		return
 	}
 
 	// Configure the dialer with the mail server settings.
-	mailer = gomail.NewDialer(lib.Config.MailHost, port, lib.Config.MailUsername, lib.Config.MailPassword)
+	mailer = gomail.NewDialer(cfg.Config.MailHost, port, cfg.Config.MailUsername, cfg.Config.MailPassword)
 
 	// Set TLS configuration based on whether a secure connection is required.
-	mailer.TLSConfig = &tls.Config{InsecureSkipVerify: !lib.Config.MailSecure, ServerName: lib.Config.MailHost}
+	mailer.TLSConfig = &tls.Config{InsecureSkipVerify: !cfg.Config.MailSecure, ServerName: cfg.Config.MailHost}
 
 	// Log the mailer configuration.
 	log.WithFields(log.Fields{
-		"host":   lib.Config.MailHost + ":" + lib.Config.MailPort,
-		"user":   lib.Config.MailUsername,
-		"sender": lib.Config.MailSender,
-		"secure": lib.Config.MailSecure,
+		"host":   cfg.Config.MailHost + ":" + cfg.Config.MailPort,
+		"user":   cfg.Config.MailUsername,
+		"sender": cfg.Config.MailSender,
+		"secure": cfg.Config.MailSecure,
 	}).Info("initiated mailer")
 
 	// Parse HTML templates.
@@ -81,7 +81,7 @@ func Send(subject string, file string, data any) error {
 	}
 
 	// In production, send the actual email.
-	if !lib.Config.Debug {
+	if !cfg.Config.Debug {
 		var htmlEmail, textEmail bytes.Buffer
 
 		// Execute the HTML template with the provided data.
@@ -100,8 +100,8 @@ func Send(subject string, file string, data any) error {
 		msg.SetAddressHeader("To", defaultData.Email, defaultData.Name)
 		msg.SetBody("text/plain", textEmail.String())
 		msg.AddAlternative("text/html", htmlEmail.String())
-		msg.SetAddressHeader("From", lib.Config.MailSender, "Twibber")
-		msg.SetAddressHeader("Reply-To", lib.Config.MailReply, "Twibber Support")
+		msg.SetAddressHeader("From", cfg.Config.MailSender, "Twibber")
+		msg.SetAddressHeader("Reply-To", cfg.Config.MailReply, "Twibber Support")
 
 		// Send the email message.
 		if err := mailer.DialAndSend(msg); err != nil {

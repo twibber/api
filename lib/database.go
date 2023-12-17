@@ -2,7 +2,8 @@ package lib
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"        // Logrus for structured logging
+	log "github.com/sirupsen/logrus" // Logrus for structured logging
+	cfg "github.com/twibber/api/config"
 	"github.com/twibber/api/lib/gormLogger" // Custom GORM logger from the lib package
 	"github.com/twibber/api/models"         // Data models for the application
 	"gorm.io/driver/postgres"               // GORM driver for PostgreSQL
@@ -19,7 +20,7 @@ var (
 func init() {
 	// Opens a new database connection using the provided credentials and configuration.
 	if conn, err := gorm.Open(postgres.Open(fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s",
-		Config.DBUsername, Config.DBPassword, Config.DBHost, Config.DBPort, Config.DBName)), &gorm.Config{
+		cfg.Config.DBUsername, cfg.Config.DBPassword, cfg.Config.DBHost, cfg.Config.DBPort, cfg.Config.DBName)), &gorm.Config{
 		Logger:               gormLogger.New(), // Uses the custom GORM logger
 		FullSaveAssociations: true,             // Enables automatic saving of associated entities
 	}); err != nil {
@@ -28,10 +29,10 @@ func init() {
 	} else {
 		// Log the success of the database connection attempt
 		log.WithFields(log.Fields{
-			"user":     Config.DBUsername,
-			"password": strings.Repeat("*", len(Config.DBPassword)), // Masks the password for security
-			"host":     Config.DBHost + ":" + Config.DBPort,
-			"database": Config.DBName,
+			"user":     cfg.Config.DBUsername,
+			"password": strings.Repeat("*", len(cfg.Config.DBPassword)), // Masks the password for security
+			"host":     cfg.Config.DBHost + ":" + cfg.Config.DBPort,
+			"database": cfg.Config.DBName,
 		}).Info("initiated database connection")
 		DB = conn // Set the global DB variable to the connection
 	}

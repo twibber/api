@@ -1,5 +1,18 @@
 package models
 
+import (
+	"github.com/twibber/api/img"
+	"gorm.io/gorm"
+)
+
+var (
+	// DefaultAvatar is the default avatar image URL
+	DefaultAvatar = img.SignImageURL("https://cdn.twibber.xyz/avatars/default.webp")
+
+	// DefaultBanner is the default banner image URL
+	DefaultBanner = img.SignImageURL("https://cdn.twibber.xyz/banners/default.webp")
+)
+
 // User represents the system user with related authentication details and profile information.
 type User struct {
 	BaseModel
@@ -9,8 +22,8 @@ type User struct {
 	Username    string `gorm:"size:255;not null;unique" json:"username"` // The user's chosen username, unique across the system
 	DisplayName string `gorm:"size:255" json:"display_name"`             // The user's display name, shown to other users
 
-	Avatar string `gorm:"size:255" json:"avatar"` // URL to the user's avatar image
-	Banner string `gorm:"size:255" json:"banner"` // URL to the user's banner image
+	Avatar string `json:"avatar"` // URL to the user's avatar image
+	Banner string `json:"banner"` // URL to the user's banner image
 
 	Admin          bool `gorm:"not null;default:false" json:"admin"`           // Flag indicating whether the user has administrative privileges
 	VerifiedPerson bool `gorm:"not null;default:false" json:"verified_person"` // Flag indicating whether the user is a verified person
@@ -32,6 +45,30 @@ type User struct {
 	// Fields Hidden from GORM
 	YouFollow  bool `gorm:"-" json:"you_follow"`  // Flag indicating whether the current user follows this user
 	FollowsYou bool `gorm:"-" json:"follows_you"` // Flag indicating whether this user follows the current user
+}
+
+func (u *User) AfterFind(tx *gorm.DB) (err error) {
+	if u.Avatar != "" {
+		u.Avatar = img.SignImageURL(u.Avatar, img.IMGConfig{
+			Width:   100,
+			Height:  100,
+			Quality: 75,
+		})
+	} else {
+		u.Avatar = DefaultAvatar
+	}
+
+	if u.Banner != "" {
+		u.Banner = img.SignImageURL(u.Banner, img.IMGConfig{
+			Width:   768,
+			Height:  256,
+			Quality: 75,
+		})
+	} else {
+		u.Banner = DefaultBanner
+	}
+
+	return nil
 }
 
 // Follow represents a relationship where a User is following another User.

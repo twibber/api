@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	mw "github.com/twibber/api/app/middleware"
+	cfg "github.com/twibber/api/config"
 	"strings"
 	"time"
 
@@ -40,12 +41,14 @@ func Configure() *fiber.App {
 	app.Use(requestid.New())
 
 	// Middleware to recover from panics and keep the server running.
-	app.Use(recover.New())
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+	}))
 
 	// CORS to allow requests from the configured domain
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool {
-			return strings.Contains(origin, lib.Config.Domain)
+			return strings.Contains(origin, cfg.Config.Domain)
 		},
 		AllowCredentials: true,
 	}))
@@ -63,7 +66,7 @@ func Configure() *fiber.App {
 	// Status route to provide application health and debug information.
 	app.All("/", func(c *fiber.Ctx) error {
 		var mode = "production"
-		if lib.Config.Debug {
+		if cfg.Config.Debug {
 			mode = "debug"
 		}
 

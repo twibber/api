@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	cfg "github.com/twibber/api/config"
 	"time"
 
 	log "github.com/sirupsen/logrus" // Logrus - Structured logger for Go
 
-	"github.com/twibber/api/lib"    // Library containing project-specific configurations
 	"github.com/twibber/api/router" // Router package for handling HTTP routes
 )
 
@@ -22,7 +22,7 @@ func init() {
 	})
 
 	// In debug mode, potentially additional setup like database migration could occur.
-	if lib.Config.Debug {
+	if cfg.Config.Debug {
 		// lib.MigrateDB() // Uncomment if database migration should occur at startup in debug mode
 		log.SetLevel(log.DebugLevel) // Setting the log level to Debug if in debug mode
 	}
@@ -31,7 +31,7 @@ func init() {
 // The main function starts the HTTP listener and logs fatal errors if the server fails to start.
 func main() {
 	// Starting the HTTP server and listening on the configured port.
-	if err := router.Configure().Listen(fmt.Sprintf("%s:%s", "0.0.0.0", lib.Config.Port)); err != nil {
-		log.WithError(err).WithField("port", lib.Config.Port).Fatal("failed to start listener")
+	if err := router.Configure().Listen(fmt.Sprintf("%s:%s", "0.0.0.0", cfg.Config.Port)); err != nil {
+		log.WithError(err).WithField("port", cfg.Config.Port).Fatal("failed to start listener")
 	}
 }

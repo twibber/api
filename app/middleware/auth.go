@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"github.com/gofiber/fiber/v2"   // Web framework for Golang
+	"github.com/gofiber/fiber/v2" // Web framework for Golang
+	cfg "github.com/twibber/api/config"
 	"github.com/twibber/api/lib"    // Contains shared configurations and utilities
 	"github.com/twibber/api/models" // Data models for the application
 )
@@ -33,7 +34,7 @@ func AdminCheck(c *fiber.Ctx) error {
 	session := c.Locals("session").(models.Session)
 
 	// Blocks non-admin users unless in debug mode
-	if !session.Connection.User.Admin && !lib.Config.Debug {
+	if !session.Connection.User.Admin && !cfg.Config.Debug {
 		return lib.ErrForbidden
 	}
 

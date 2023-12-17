@@ -3,6 +3,7 @@ package lib
 import (
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
+	cfg "github.com/twibber/api/config"
 	"io"
 	"net/http"
 	"time"
@@ -23,7 +24,7 @@ type SiteVerifyResponse struct {
 // CheckCaptcha verifies the reCAPTCHA response token.
 func CheckCaptcha(captcha string) error {
 	// Skip verification in development environment.
-	if Config.Debug {
+	if cfg.Config.Debug {
 		return nil
 	}
 
@@ -41,7 +42,7 @@ func CheckCaptcha(captcha string) error {
 
 	// Set the necessary query parameters for the request.
 	q := req.URL.Query()
-	q.Add("secret", Config.CaptchaSecret)
+	q.Add("secret", cfg.Config.CaptchaSecret)
 	q.Add("response", captcha)
 	req.URL.RawQuery = q.Encode()
 

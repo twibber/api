@@ -3,6 +3,7 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	cfg "github.com/twibber/api/config"
 	"net/http"
 	"reflect"
 	"strings"
@@ -94,7 +95,7 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 		return c.Status(e.Status).JSON(Response{Success: false, Data: e})
 	case *json.SyntaxError:
 		var e Error
-		if Config.Debug {
+		if cfg.Config.Debug {
 			e = NewError(fiber.StatusBadRequest, fmt.Sprintf("%s: %s", reflect.TypeOf(err).String(), err.Error()), nil)
 		} else {
 			e = NewError(fiber.StatusUnprocessableEntity, "Invalid JSON was provided in the request body.", nil)
@@ -116,9 +117,22 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 		default:
 			// Logs unhandled errors and returns a generic error response
 			e := NewError(fiber.StatusInternalServerError, "An internal server error occurred while processing your request", nil)
-			if Config.Debug {
-				log.WithError(err).WithField("errType", reflect.TypeOf(err).String()).Error("An unhandled error occurred.")
-				e = NewError(fiber.StatusInternalServerError, fmt.Sprintf("%s: %s", reflect.TypeOf(err).String(), err.Error()), nil)
+			if cfg.Config.Debug {
+				var debugInfo any
+
+				debugInfo = log.Fields{
+					"ErrorType": reflect.TypeOf(err).String(),
+					"Message":   err.Error(),
+				}
+
+				log.WithError(err).WithFields(log.Fields{
+					"errType": reflect.TypeOf(err).String(),
+					"error":   err.Error(),
+				}).Error("An unhandled error occurred.")
+
+				e = NewError(fiber.StatusInternalServerError, "An internal server error occurred while processing your request", &ErrorDetails{
+					Debug: debugInfo,
+				})
 			}
 			return c.Status(e.Status).JSON(Response{Success: false, Data: e})
 		}

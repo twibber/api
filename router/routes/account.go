@@ -11,5 +11,7 @@ func Account(app fiber.Router) {
 	app.Get("/connections", account.ListConnections)
 	app.Get("/sessions", account.ListSessions)
 
+	app.Post("/image/:type", account.UpdateProfileImages)
+
 	app.Patch("/", account.UpdateProfile)
 }

@@ -1,4 +1,4 @@
-package lib
+package cfg
 
 import (
 	"github.com/joho/godotenv"   // Package to load .env files
@@ -43,7 +43,7 @@ type Configuration struct {
 	CaptchaPublic string `env:"CAPTCHA_PUBLIC"` // Public key for reCAPTCHA
 	CaptchaSecret string `env:"CAPTCHA_SECRET"` // Secret key for reCAPTCHA
 
-	// OAuth providers' credentials
+	// OAuth's providers' credentials
 	GoogleClient string `env:"GOOGLE_CLIENT_ID"`     // Google OAuth Client ID
 	GoogleSecret string `env:"GOOGLE_CLIENT_SECRET"` // Google OAuth Secret
 
@@ -54,10 +54,16 @@ type Configuration struct {
 	// Sentry error reporting DSN
 	SentryDSN string `env:"SENTRY_DSN"` // Data Source Name for Sentry
 
-	// imgproxy Config
+	// imgproxy
 	ImgproxyURL  string `env:"IMGPROXY_URL"`  // imgproxy url
 	ImgproxyKey  string `env:"IMGPROXY_KEY"`  // imgproxy key
 	ImgproxySalt string `env:"IMGPROXY_SALT"` // imgproxy salt
+
+	// R2 Cloudflare Storage
+	R2BucketName      string `env:"R2_BUCKET_NAME"`
+	R2AccountID       string `env:"R2_ACCOUNT_ID"`
+	R2AccessKeyID     string `env:"R2_ACCESS_KEY_ID"`
+	R2AccessKeySecret string `env:"R2_ACCESS_KEY_SECRET"`
 }
 
 // Config holds the global configuration loaded from environment variables.
