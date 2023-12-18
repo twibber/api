@@ -8,7 +8,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/alexedwards/argon2id"
 	log "github.com/sirupsen/logrus"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -30,6 +32,14 @@ const (
 var stepDurations = [...]int64{
 	30,  // MFA code lasts 30 seconds.
 	600, // Email verification code lasts 10 minutes.
+}
+
+var ArgonConfig = argon2id.Params{
+	Memory:      64 * 1024,
+	Iterations:  16,
+	Parallelism: uint8(runtime.NumCPU()),
+	SaltLength:  32,
+	KeyLength:   128,
 }
 
 var chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

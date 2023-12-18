@@ -31,7 +31,7 @@ func Login(c *fiber.Ctx) error {
 	var connection models.Connection
 	if err := tx.Where(models.Connection{
 		BaseModel: models.BaseModel{
-			ID: models.EmailType.WithID(dto.Email),
+			ID: models.ProviderEmailType.WithID(dto.Email),
 		},
 	}).First(&connection).Error; err != nil {
 		tx.Rollback()

@@ -8,7 +8,6 @@ import (
 	"github.com/twibber/api/mailer"
 	"github.com/twibber/api/models"
 	"net/http"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -45,13 +44,7 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	// Hash the password using Argon2id.
-	hashedPassword, err := argon2id.CreateHash(dto.Password, &argon2id.Params{
-		Memory:      64 * 1024,
-		Iterations:  16,
-		Parallelism: uint8(runtime.NumCPU()),
-		SaltLength:  32,
-		KeyLength:   128,
-	})
+	hashedPassword, err := argon2id.CreateHash(dto.Password, &lib.ArgonConfig)
 	if err != nil {
 		return err
 	}
@@ -115,7 +108,7 @@ func Register(c *fiber.Ctx) error {
 
 	// Create a new connection record.
 	if err := tx.Create(&models.Connection{
-		BaseModel: models.BaseModel{ID: models.EmailType.WithID(dto.Email)},
+		BaseModel: models.BaseModel{ID: models.ProviderEmailType.WithID(dto.Email)},
 		UserID:    user.ID,
 		Password:  hashedPassword,
 		Verified:  false,

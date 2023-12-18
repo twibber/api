@@ -25,7 +25,7 @@ func ResendCode(c *fiber.Ctx) error {
 	var connection models.Connection
 	if err := lib.DB.Where(models.Connection{
 		BaseModel: models.BaseModel{
-			ID: models.EmailType.WithID(dto.Email),
+			ID: models.ProviderEmailType.WithID(dto.Email),
 		},
 	}).Preload("User").First(&connection).Error; err != nil {
 		return err

@@ -10,9 +10,9 @@ type ConnectionType string
 
 // Predefined constants for ConnectionType.
 const (
-	EmailType  ConnectionType = "email"
-	GoogleType ConnectionType = "google"
-	GitHubType ConnectionType = "github"
+	ProviderEmailType  ConnectionType = "email"
+	ProviderGoogleType ConnectionType = "google"
+	ProviderGitHubType ConnectionType = "github"
 )
 
 func (c ConnectionType) WithID(id string) string {
