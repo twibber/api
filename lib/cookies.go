@@ -20,14 +20,15 @@ func ClearAuth(c *fiber.Ctx) {
 	})
 }
 
+// SetAuth sets the "Authorization" cookie to the provided token and expires it after the provided duration.
 func SetAuth(c *fiber.Ctx, token string, exp time.Duration) {
 	c.Cookie(&fiber.Cookie{
 		Name:     "Authorization",
-		Value:    token,
-		Path:     "/",
-		Domain:   "." + cfg.Config.Domain, // Allows subdomains to access the cookie
-		MaxAge:   int(exp.Seconds()),
-		HTTPOnly: true,
-		SameSite: "lax",
+		Value:    token,                   // Sets the auth token as the value of the cookie
+		Path:     "/",                     // Allows all paths to access the cookie
+		Domain:   "." + cfg.Config.Domain, // Make the cookie a wildcard  to access the cookie from all subdomains of the domain
+		MaxAge:   int(exp.Seconds()),      // Sets the cookie to expire after the provided duration
+		HTTPOnly: true,                    // Prevents JavaScript from accessing the cookie
+		SameSite: "lax",                   // Lax same-site policy to allow sending the cookie along with cross-site requests on the same domain
 	})
 }

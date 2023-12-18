@@ -96,7 +96,6 @@ func Register(c *fiber.Ctx) error {
 		Admin:          false,
 		VerifiedPerson: false,
 		Email:          dto.Email,
-		MFA:            totpCode,
 		Suspended:      false,
 	}
 	if err := tx.Create(&user).Error; err != nil {
@@ -108,10 +107,11 @@ func Register(c *fiber.Ctx) error {
 
 	// Create a new connection record.
 	if err := tx.Create(&models.Connection{
-		BaseModel: models.BaseModel{ID: models.ProviderEmailType.WithID(dto.Email)},
-		UserID:    user.ID,
-		Password:  hashedPassword,
-		Verified:  false,
+		BaseModel:  models.BaseModel{ID: models.ProviderEmailType.WithID(dto.Email)},
+		UserID:     user.ID,
+		Password:   hashedPassword,
+		TOTPVerify: totpCode,
+		Verified:   false,
 		Sessions: []models.Session{
 			{
 				BaseModel: models.BaseModel{ID: token},
