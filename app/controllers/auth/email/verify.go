@@ -18,16 +18,7 @@ func Verify(c *fiber.Ctx) error {
 		return err
 	}
 
-	var connection models.Connection
-	if err := lib.DB.Where(models.Connection{
-		BaseModel: models.BaseModel{
-			ID: models.EmailType.WithID(session.ConnectionID),
-		},
-	}).First(&connection).Error; err != nil {
-		return err
-	}
-
-	if !lib.ValidateTOTP(connection.TOTPVerify, dto.Code, lib.EmailVerification) {
+	if !lib.ValidateTOTP(session.Connection.TOTPVerify, dto.Code, lib.EmailVerification) {
 		return lib.NewError(fiber.StatusBadRequest, "Invalid code provided.", &lib.ErrorDetails{
 			Fields: []lib.ErrorField{
 				{
@@ -37,10 +28,10 @@ func Verify(c *fiber.Ctx) error {
 			},
 		})
 	} else {
-		connection.Verified = true
+		session.Connection.Verified = true
 	}
 
-	if err := lib.DB.Updates(&connection).Error; err != nil {
+	if err := lib.DB.Updates(&session.Connection).Error; err != nil {
 		return err
 	}
 
