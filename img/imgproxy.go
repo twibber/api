@@ -9,6 +9,7 @@ import (
 	cfg "github.com/twibber/api/config"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // IMGConfig is a configuration for the imgproxy URL and image settings
@@ -20,7 +21,7 @@ type IMGConfig struct {
 
 // SignImageURL signs an image URL with the given key and salt for imgproxy
 func SignImageURL(imgURL string, config ...IMGConfig) string {
-	escapedImgURL := url.QueryEscape(imgURL)
+	escapedImgURL := url.QueryEscape(imgURL + "&cache_avoid=" + time.Now().Format(time.RFC3339Nano))
 
 	// Default configuration
 	var imgConfig IMGConfig

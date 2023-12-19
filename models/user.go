@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/twibber/api/img"
-	"github.com/twibber/api/lib"
 	"gorm.io/gorm"
 )
 
@@ -49,14 +48,12 @@ type User struct {
 }
 
 func (u *User) AfterFind(tx *gorm.DB) (err error) {
-	cacheAvoid, _ := lib.GenerateSecureRandomBase32(10)
-
 	if u.Avatar != "" {
 		u.Avatar = img.SignImageURL(u.Avatar, img.IMGConfig{
 			Width:   100,
 			Height:  100,
 			Quality: 75,
-		}) + "&cache_avoid=" + cacheAvoid
+		})
 	} else {
 		u.Avatar = DefaultAvatar
 	}
@@ -66,7 +63,7 @@ func (u *User) AfterFind(tx *gorm.DB) (err error) {
 			Width:   768,
 			Height:  256,
 			Quality: 75,
-		}) + "&cache_avoid=" + cacheAvoid
+		})
 	} else {
 		u.Banner = DefaultBanner
 	}
