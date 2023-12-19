@@ -8,6 +8,7 @@ import (
 	"fmt"
 	cfg "github.com/twibber/api/config"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -21,7 +22,7 @@ type IMGConfig struct {
 
 // SignImageURL signs an image URL with the given key and salt for imgproxy
 func SignImageURL(imgURL string, config ...IMGConfig) string {
-	escapedImgURL := url.QueryEscape(imgURL + "&cache_avoid=" + time.Now().Format(time.RFC3339Nano))
+	escapedImgURL := url.QueryEscape(imgURL + "?t=" + strconv.Itoa(time.Now().Nanosecond()))
 
 	// Default configuration
 	var imgConfig IMGConfig
